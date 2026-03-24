@@ -9,8 +9,8 @@ import numpy as np
 # ensure examples/ is on path so `import tensor_cpu` resolves when running from examples/
 sys.path.insert(0, ".")
 
-from tensor_cpu.graph import Graph
-from tensor_cpu.ops import OpType
+from tensor_cpu.ir.graph import Graph
+from tensor_cpu.ir.ops import OpType
 from tensor_cpu.passes.constfold import constant_fold
 from tensor_cpu.passes.cse import cse
 from tensor_cpu.runtime import JITEngine

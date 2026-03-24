@@ -1,0 +1,8 @@
+# Core runtime dependencies
+numpy>=1.24.0
+
+# Optional: SymPy for symbolic shape inference
+sympy>=1.12
+
+# Optional: pybind11 for native bindings
+pybind11>=2.11.0

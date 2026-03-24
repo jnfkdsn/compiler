@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-03-20T05:37:36.526918+00:00",
+  "comparison": {
+    "metric": "median_ms",
+    "regression_threshold": 0.35,
+    "profile": "quick"
+  },
+  "environment": {
+    "python_version": "3.12.2",
+    "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.35",
+    "machine": "x86_64",
+    "processor": "x86_64",
+    "compiler": "g++",
+    "omp_num_threads": "unset",
+    "mkldnn_threads": "unset",
+    "openblas_threads": "unset",
+    "tensor_passes": ""
+  },
+  "methodology": {
+    "timing_unit": "milliseconds",
+    "compile_ms": "one-time JIT compile latency",
+    "time_ms": "mean runtime across measured repeats",
+    "median_ms": "median runtime across measured repeats",
+    "p95_ms": "95th percentile runtime across measured repeats",
+    "cpu_thread_note": "For reproducible runs, pin CPU affinity externally and set OMP_NUM_THREADS=1 / OPENBLAS_NUM_THREADS=1 / MKL_NUM_THREADS=1 unless intentionally benchmarking thread scaling."
+  },
+  "results": {
+    "matmul_128x128x128": {
+      "time_ms": 1.2873363331588432,
+      "compile_ms": 792.8525670004092,
+      "median_ms": 0.8445189996564295,
+      "p95_ms": 2.6399559999845224,
+      "gflops": 3.2581260172375393
+    },
+    "fused_mlp_128x128x128": {
+      "time_ms": 1.2437666667513743,
+      "compile_ms": 840.232541000205,
+      "median_ms": 1.178927000182739,
+      "p95_ms": 1.399705999847356,
+      "gflops": 3.372259533980927
+    },
+    "add_1024x1024": {
+      "time_ms": 3.776533333317881,
+      "compile_ms": 652.891574000023,
+      "median_ms": 3.7972659997649316,
+      "p95_ms": 3.8150356001096952,
+      "bandwidth_gbps": 3.331868380185925
+    }
+  }
+}

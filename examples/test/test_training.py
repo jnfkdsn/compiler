@@ -8,9 +8,9 @@ import numpy as np
 
 sys.path.insert(0, ".")
 
+from experimental.lazy import lazy_mse_loss
 from tensor_cpu import Tensor, TraceContext, compile_training_step, compile_sgd_update_kernel
 from tensor_cpu.nn import Linear, ReLU, Sequential, mse_loss, JITTrainer, LazyJITTrainer
-from tensor_cpu.lazy import lazy_mse_loss
 from tensor_cpu.optim import SGD, Adam
 
 
@@ -205,6 +205,31 @@ def test_full_jit_training_step():
 
     assert losses[-1] < losses[0], f"Full JIT training did not converge: {losses[0]:.4f} -> {losses[-1]:.4f}"
     print(f"  PASS: full-JIT training step (loss {losses[0]:.4f} -> {losses[-1]:.4f})")
+
+
+def test_compile_training_step_packs_gradient_outputs():
+    np.random.seed(160)
+    x_np = np.random.randn(4, 3).astype(np.float32)
+    y_np = np.random.randn(4, 2).astype(np.float32)
+    w_np = np.random.randn(3, 2).astype(np.float32)
+    b_np = np.random.randn(2).astype(np.float32)
+
+    with TraceContext() as tc:
+        x = Tensor.from_numpy(x_np, name="x")
+        y = Tensor.from_numpy(y_np, name="y")
+        w = Tensor.from_numpy(w_np, name="w", requires_grad=True)
+        b = Tensor.from_numpy(b_np, name="b", requires_grad=True)
+        loss = mse_loss((x @ w) + b, y).mark_as_output()
+        _ = loss
+        graph = tc.graph
+
+    step = compile_training_step(graph, param_input_ids=[w.node.id, b.node.id])
+    assert step.grad_module.output_shape == (w_np.size + b_np.size,)
+    assert len(step.grad_layout) == 2
+
+    _, grads = step.run_loss_and_grads(x_np, y_np, w_np, b_np)
+    assert grads[w.node.id].shape == w_np.shape
+    assert grads[b.node.id].shape == b_np.shape
 
 
 # ---------------------------------------------------------------------------

@@ -13,6 +13,7 @@ from tensor_cpu import (
     Tensor,
     TraceContext,
     decode_abi_status,
+    jit,
     optimize_graph,
 )
 from tensor_cpu.runtime import JITCompileError
@@ -106,6 +107,27 @@ def test_hpc_matmul():
     ref = np.maximum(x @ w + b, 0.0)
     np.testing.assert_allclose(out, ref, rtol=1e-4, atol=1e-4)
     print("  PASS: HPC matmul")
+
+
+def test_hpc_matmul_rejects_dynamic_shape_reuse():
+    np.random.seed(200)
+    x_trace = np.random.randn(4, 8).astype(np.float32)
+    w = np.random.randn(8, 6).astype(np.float32)
+
+    with TraceContext() as tc:
+        xt = Tensor.from_numpy(x_trace, name="x")
+        wt = Tensor.from_numpy(w, name="w")
+        (xt @ wt).mark_as_output()
+        graph = tc.graph
+
+    mod = JITEngine(use_hpc_template=True).compile_graph(graph)
+
+    x_other = np.random.randn(7, 8).astype(np.float32)
+    try:
+        mod.run(x_other, w)
+        raise AssertionError("Expected exact-shape guard for HPC-specialized matmul")
+    except ValueError as exc:
+        assert "exact traced shape" in str(exc)
 
 
 # ---------------------------------------------------------------------------
@@ -230,15 +252,31 @@ def test_fused_symbolic_shapes_dynamic_batch():
     print("  PASS: fused symbolic shapes with dynamic batch")
 
 
+def test_jit_trace_rejects_multi_output():
+    np.random.seed(201)
+
+    def pairwise(a, b):
+        return a + b, a * b
+
+    x = Tensor.from_numpy(np.random.randn(2, 2).astype(np.float32), name="x")
+    y = Tensor.from_numpy(np.random.randn(2, 2).astype(np.float32), name="y")
+
+    try:
+        jit.trace(pairwise, (x, y), use_hpc=False)
+        raise AssertionError("Expected multi-output trace to be rejected on stable JIT path")
+    except RuntimeError as exc:
+        assert "Multiple outputs are not supported" in str(exc)
+
+
 # ===========================================================================
 
 def main():
     print("=== JIT Core Tests ===")
-    # test_naive_jit()
-    # test_fusion()
-    # test_hpc_matmul()
-    # test_new_ops()
-    # test_abi_guards()
+    test_naive_jit()
+    test_fusion()
+    test_hpc_matmul()
+    test_new_ops()
+    test_abi_guards()
     test_symbolic_shapes()
     test_fused_symbolic_shapes_dynamic_batch()
     print("All JIT core tests passed.")

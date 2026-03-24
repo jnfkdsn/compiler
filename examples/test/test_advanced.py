@@ -8,12 +8,11 @@ import numpy as np
 
 sys.path.insert(0, ".")
 
+from experimental.lazy import LazyTensor, lazy_mse_loss
 from tensor_cpu import (
-    LazyTensor,
     StaticGraph,
     Tensor,
     jit,
-    lazy_mse_loss,
 )
 from tensor_cpu.nn import (
     BatchNorm1d,
