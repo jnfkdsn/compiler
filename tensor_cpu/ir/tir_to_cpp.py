@@ -8,7 +8,10 @@ from __future__ import annotations
 
 from typing import List, Optional
 
-from .cpp_ast import Assign, BinaryOp
+from .cpp_ast import (
+    Assign,
+    BinaryOp,
+)
 from .cpp_ast import Block as CppBlock
 from .cpp_ast import (
     Call,
