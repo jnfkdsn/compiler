@@ -53,7 +53,7 @@ def add_const_node(name: str, shape: tuple[int, ...], dtype: str, value: float) 
     )
 
 
-def add_binary_node(op_type: OpType, lhs: Node, rhs: Node) -> Node:#二元节点
+def add_binary_node(op_type: OpType, lhs: Node, rhs: Node) -> Node:  # 二元节点
     graph = current_graph()
     out_shape, out_dtype = infer_binary(op_type, lhs.shape, rhs.shape, lhs.dtype, rhs.dtype)
     return graph.add_node(
@@ -65,7 +65,7 @@ def add_binary_node(op_type: OpType, lhs: Node, rhs: Node) -> Node:#二元节点
     )
 
 
-def add_unary_node(op_type: OpType, src: Node) -> Node: #一元节点
+def add_unary_node(op_type: OpType, src: Node) -> Node:  # 一元节点
     graph = current_graph()
     out_shape, out_dtype = infer_unary(op_type, src.shape, src.dtype)
     return graph.add_node(
@@ -77,7 +77,7 @@ def add_unary_node(op_type: OpType, src: Node) -> Node: #一元节点
     )
 
 
-def add_transpose_node(src: Node) -> Node: #转置节点
+def add_transpose_node(src: Node) -> Node:  # 转置节点
     graph = current_graph()
     out_shape, out_dtype = infer_unary(OpType.TRANSPOSE, src.shape, src.dtype)
     return graph.add_node(
@@ -89,9 +89,13 @@ def add_transpose_node(src: Node) -> Node: #转置节点
     )
 
 
-def add_reduce_node(op_type: OpType, src: Node, axis: int | tuple[int, ...] | None, keepdims: bool) -> Node: #归约节点
+def add_reduce_node(
+    op_type: OpType, src: Node, axis: int | tuple[int, ...] | None, keepdims: bool
+) -> Node:  # 归约节点
     graph = current_graph()
-    out_shape, out_dtype, axes = infer_reduce(op_type, src.shape, src.dtype, axis=axis, keepdims=keepdims)
+    out_shape, out_dtype, axes = infer_reduce(
+        op_type, src.shape, src.dtype, axis=axis, keepdims=keepdims
+    )
     return graph.add_node(
         op_type=op_type,
         name=f"{op_type.value}_{src.id}",

@@ -9,27 +9,23 @@ import numpy as np
 sys.path.insert(0, ".")
 
 from experimental.lazy import LazyTensor, lazy_mse_loss
-from tensor_cpu import (
-    StaticGraph,
-    Tensor,
-    jit,
-)
+from tensor_cpu import StaticGraph, Tensor, jit
 from tensor_cpu.nn import (
+    MLP,
     BatchNorm1d,
     Dropout,
     LayerNorm,
     Linear,
-    MLP,
     ReLU,
     SelfAttention,
     Sequential,
     mse_loss,
 )
 
-
 # ---------------------------------------------------------------------------
 # 1. BatchNorm1d train / eval
 # ---------------------------------------------------------------------------
+
 
 def test_batchnorm():
     np.random.seed(20)
@@ -60,6 +56,7 @@ def test_batchnorm():
 # 2. LayerNorm
 # ---------------------------------------------------------------------------
 
+
 def test_layernorm():
     np.random.seed(21)
     ln = LayerNorm(8)
@@ -75,6 +72,7 @@ def test_layernorm():
 # ---------------------------------------------------------------------------
 # 3. Dropout train vs eval
 # ---------------------------------------------------------------------------
+
 
 def test_dropout():
     np.random.seed(22)
@@ -99,11 +97,14 @@ def test_dropout():
 # 4. SelfAttention forward + backward
 # ---------------------------------------------------------------------------
 
+
 def test_self_attention():
     np.random.seed(23)
     d_model = 16
     attn = SelfAttention(d_model=d_model, d_k=8)
-    x = Tensor.from_numpy(np.random.randn(5, d_model).astype(np.float32), requires_grad=True, name="x")
+    x = Tensor.from_numpy(
+        np.random.randn(5, d_model).astype(np.float32), requires_grad=True, name="x"
+    )
     out = attn(x)
     assert out.data.shape == (5, d_model), f"attention output shape {out.data.shape}"
 
@@ -118,6 +119,7 @@ def test_self_attention():
 # 5. MLP builder
 # ---------------------------------------------------------------------------
 
+
 def test_mlp():
     np.random.seed(24)
     mlp = MLP(in_features=8, hidden_features=[16, 16], out_features=2, activation="relu")
@@ -131,6 +133,7 @@ def test_mlp():
 # ---------------------------------------------------------------------------
 # 6. LazyTensor deferred execution
 # ---------------------------------------------------------------------------
+
 
 def test_lazy_tensor():
     np.random.seed(25)
@@ -150,7 +153,9 @@ def test_lazy_tensor():
     np.testing.assert_allclose(result, ref, rtol=1e-5, atol=1e-5)
 
     # Lazy MSE loss + backward
-    pred = LazyTensor.from_numpy(np.random.randn(4, 4).astype(np.float32), name="pred", requires_grad=True)
+    pred = LazyTensor.from_numpy(
+        np.random.randn(4, 4).astype(np.float32), name="pred", requires_grad=True
+    )
     tgt = LazyTensor.from_numpy(np.zeros((4, 4), dtype=np.float32), name="tgt")
     loss = lazy_mse_loss(pred, tgt)
     loss.backward()
@@ -161,6 +166,7 @@ def test_lazy_tensor():
 # ---------------------------------------------------------------------------
 # 7. StaticGraph compile and run
 # ---------------------------------------------------------------------------
+
 
 def test_static_graph():
     np.random.seed(26)
@@ -190,6 +196,7 @@ def test_static_graph():
 # 8. jit.trace on function
 # ---------------------------------------------------------------------------
 
+
 def test_jit_trace_function():
     np.random.seed(27)
 
@@ -210,6 +217,7 @@ def test_jit_trace_function():
 # 9. jit.trace on Module
 # ---------------------------------------------------------------------------
 
+
 def test_jit_trace_module():
     np.random.seed(28)
     model = Sequential(Linear(8, 4), ReLU(), Linear(4, 2))
@@ -224,6 +232,7 @@ def test_jit_trace_module():
 
 
 # ===========================================================================
+
 
 def main():
     print("=== Advanced Tests ===")

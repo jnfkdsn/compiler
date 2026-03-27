@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+
 import numpy as np
 
 sys.path.insert(0, ".")
@@ -18,10 +19,10 @@ from tensor_cpu import (
 )
 from tensor_cpu.runtime import JITCompileError
 
-
 # ---------------------------------------------------------------------------
 # helpers
 # ---------------------------------------------------------------------------
+
 
 def build_relu_graph(x_np, w_np, b_np):
     """Trace: relu(x @ w + b)"""
@@ -47,6 +48,7 @@ def build_add_graph(x_np, y_np):
 # 1. Naive JIT correctness
 # ---------------------------------------------------------------------------
 
+
 def test_naive_jit():
     np.random.seed(0)
     x = np.random.randn(4, 8).astype(np.float32)
@@ -66,6 +68,7 @@ def test_naive_jit():
 # ---------------------------------------------------------------------------
 # 2. Fusion pass correctness
 # ---------------------------------------------------------------------------
+
 
 def test_fusion():
     np.random.seed(1)
@@ -92,6 +95,7 @@ def test_fusion():
 # ---------------------------------------------------------------------------
 # 3. HPC matmul correctness
 # ---------------------------------------------------------------------------
+
 
 def test_hpc_matmul():
     np.random.seed(2)
@@ -134,6 +138,7 @@ def test_hpc_matmul_rejects_dynamic_shape_reuse():
 # 4. New ops: exp, log, sigmoid, sum, mean, max
 # ---------------------------------------------------------------------------
 
+
 def test_new_ops():
     np.random.seed(3)
     x_np = np.random.randn(4, 8).astype(np.float32)
@@ -164,6 +169,7 @@ def test_new_ops():
 # ---------------------------------------------------------------------------
 # 5. ABI guard checks
 # ---------------------------------------------------------------------------
+
 
 def test_abi_guards():
     np.random.seed(4)
@@ -198,6 +204,7 @@ def test_abi_guards():
 # ---------------------------------------------------------------------------
 # 6. Symbolic shape reuse
 # ---------------------------------------------------------------------------
+
 
 def test_symbolic_shapes():
     np.random.seed(5)
@@ -269,6 +276,7 @@ def test_jit_trace_rejects_multi_output():
 
 
 # ===========================================================================
+
 
 def main():
     print("=== JIT Core Tests ===")

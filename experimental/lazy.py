@@ -32,7 +32,9 @@ class LazyTensor:
         self._cached: Optional[Tensor] = None
 
     @staticmethod
-    def from_numpy(array: np.ndarray, *, name: str | None = None, requires_grad: bool = False) -> "LazyTensor":
+    def from_numpy(
+        array: np.ndarray, *, name: str | None = None, requires_grad: bool = False
+    ) -> "LazyTensor":
         arr = np.asarray(array, dtype=np.float32)
         return LazyTensor(lambda: Tensor.from_numpy(arr, name=name, requires_grad=requires_grad))
 
@@ -137,10 +139,14 @@ class LazyTensor:
     def T(self) -> "LazyTensor":
         return self.transpose()
 
-    def sum(self, axis: int | tuple[int, ...] | None = None, keepdims: bool = False) -> "LazyTensor":
+    def sum(
+        self, axis: int | tuple[int, ...] | None = None, keepdims: bool = False
+    ) -> "LazyTensor":
         return LazyTensor(lambda: self.eval().sum(axis=axis, keepdims=keepdims))
 
-    def mean(self, axis: int | tuple[int, ...] | None = None, keepdims: bool = False) -> "LazyTensor":
+    def mean(
+        self, axis: int | tuple[int, ...] | None = None, keepdims: bool = False
+    ) -> "LazyTensor":
         return LazyTensor(lambda: self.eval().mean(axis=axis, keepdims=keepdims))
 
     def softmax(self, axis: int = -1, eps: float = 1e-6) -> "LazyTensor":
@@ -156,7 +162,9 @@ def lazy_mse_loss(pred: LazyTensor, target: LazyTensor) -> LazyTensor:
     return (1.0 / np.float32(np.prod(sq.shape))) * sq.sum()
 
 
-def lazy_binary_cross_entropy(pred: LazyTensor, target: LazyTensor, eps: float = 1e-6) -> LazyTensor:
+def lazy_binary_cross_entropy(
+    pred: LazyTensor, target: LazyTensor, eps: float = 1e-6
+) -> LazyTensor:
     eps_t = LazyTensor.scalar(float(eps), requires_grad=False)
     pos = target * (pred + eps_t).log()
     neg = (1.0 - target) * ((1.0 - pred) + eps_t).log()

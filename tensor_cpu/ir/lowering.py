@@ -17,31 +17,32 @@ from typing import Dict, List, Optional, Tuple
 from .graph import Graph, Node
 from .ops import OpType
 from .tir import (
-    Var,
-    Const,
+    Allocate,
     Binary,
-    Unary,
-    Ternary,
-    CallExpr,
+    Block,
+    Buffer,
     BufferLoad,
     BufferStore,
+    CallExpr,
+    Const,
     For,
-    Block,
     IfStmt,
-    Allocate,
-    LetStmt,
-    Buffer,
-    PrimFunc,
     IRModule,
+    LetStmt,
     LoopAnnotation,
+    PrimFunc,
+    Ternary,
     TIRExpr,
     TIRStmt,
+    Unary,
+    Var,
 )
 
 
 @dataclass(slots=True)
 class LoweringContext:
     """Context for the lowering process."""
+
     graph: Graph
     sym_shapes: Dict[int, Tuple[str, ...]] = field(default_factory=dict)
     sym_strides: Dict[int, Tuple[str, ...]] = field(default_factory=dict)
@@ -53,8 +54,12 @@ class LoweringContext:
 class GraphLowering:
     """Lower Graph IR to TIR."""
 
-    def __init__(self, graph: Graph, sym_shapes: Dict[int, Tuple[str, ...]] = None,
-                 sym_strides: Dict[int, Tuple[str, ...]] = None) -> None:
+    def __init__(
+        self,
+        graph: Graph,
+        sym_shapes: Dict[int, Tuple[str, ...]] = None,
+        sym_strides: Dict[int, Tuple[str, ...]] = None,
+    ) -> None:
         self.ctx = LoweringContext(
             graph=graph,
             sym_shapes=sym_shapes or {},
@@ -321,20 +326,24 @@ class GraphLowering:
 
             coord_expr = Binary(rem_var, "/", dst_stride_expr)
             inner_stmts.append(LetStmt(c_var, coord_expr, Block([])))
-            inner_stmts.append(LetStmt(
-                rem_var,
-                Binary(rem_var, "%", dst_stride_expr),
-                Block([]),
-            ))
+            inner_stmts.append(
+                LetStmt(
+                    rem_var,
+                    Binary(rem_var, "%", dst_stride_expr),
+                    Block([]),
+                )
+            )
 
             src_dim_idx = rank - 1 - d
             src_stride = src_strides[src_dim_idx]
             src_stride_expr = Const(int(src_stride)) if src_stride.isdigit() else Var(src_stride)
-            inner_stmts.append(LetStmt(
-                src_idx_var,
-                Binary(src_idx_var, "+", Binary(c_var, "*", src_stride_expr)),
-                Block([]),
-            ))
+            inner_stmts.append(
+                LetStmt(
+                    src_idx_var,
+                    Binary(src_idx_var, "+", Binary(c_var, "*", src_stride_expr)),
+                    Block([]),
+                )
+            )
 
         src_load = BufferLoad(self.ctx.buffers[src_node.id], [src_idx_var])
         store = self._create_store(node, [i_var], src_load)
@@ -401,7 +410,11 @@ class GraphLowering:
             reduce_parts = [src_sym[a] for a in axes if a < len(src_sym)]
             if reduce_parts:
                 if len(reduce_parts) == 1:
-                    reduce_size = Var(reduce_parts[0]) if not reduce_parts[0].isdigit() else Const(int(reduce_parts[0]))
+                    reduce_size = (
+                        Var(reduce_parts[0])
+                        if not reduce_parts[0].isdigit()
+                        else Const(int(reduce_parts[0]))
+                    )
                 else:
                     reduce_size = Const(1)
                     for p in reduce_parts:
@@ -435,21 +448,29 @@ class GraphLowering:
         k_var = Var("kk", "int64")
         acc_var = Var("acc", self.ctx.compute_dtype)
 
-        a_load = BufferLoad(self.ctx.buffers[a_node.id], [Binary(Binary(i_var, "*", K_expr), "+", k_var)])
-        b_load = BufferLoad(self.ctx.buffers[b_node.id], [Binary(Binary(k_var, "*", N_expr), "+", j_var)])
+        a_load = BufferLoad(
+            self.ctx.buffers[a_node.id], [Binary(Binary(i_var, "*", K_expr), "+", k_var)]
+        )
+        b_load = BufferLoad(
+            self.ctx.buffers[b_node.id], [Binary(Binary(k_var, "*", N_expr), "+", j_var)]
+        )
         c_idx = Binary(Binary(i_var, "*", N_expr), "+", j_var)
 
-        inner_body = Block([
-            LetStmt(acc_var, Binary(acc_var, "+", Binary(a_load, "*", b_load)), Block([])),
-        ])
+        inner_body = Block(
+            [
+                LetStmt(acc_var, Binary(acc_var, "+", Binary(a_load, "*", b_load)), Block([])),
+            ]
+        )
 
         k_loop = For(k_var, Const(0), K_expr, inner_body)
 
         store = self._create_store(node, [c_idx], acc_var)
 
-        j_body = Block([
-            LetStmt(acc_var, Const(0.0), Block([k_loop, store])),
-        ])
+        j_body = Block(
+            [
+                LetStmt(acc_var, Const(0.0), Block([k_loop, store])),
+            ]
+        )
 
         j_loop = For(j_var, Const(0), N_expr, j_body)
         i_loop = For(i_var, Const(0), M_expr, Block([j_loop]))
@@ -478,14 +499,20 @@ class GraphLowering:
         acc_var = Var("acc", self.ctx.compute_dtype)
         v_var = Var("v", self.ctx.compute_dtype)
 
-        a_load = BufferLoad(self.ctx.buffers[a_node.id], [Binary(Binary(i_var, "*", K_expr), "+", k_var)])
-        b_load = BufferLoad(self.ctx.buffers[b_node.id], [Binary(Binary(k_var, "*", N_expr), "+", j_var)])
+        a_load = BufferLoad(
+            self.ctx.buffers[a_node.id], [Binary(Binary(i_var, "*", K_expr), "+", k_var)]
+        )
+        b_load = BufferLoad(
+            self.ctx.buffers[b_node.id], [Binary(Binary(k_var, "*", N_expr), "+", j_var)]
+        )
         bias_load = BufferLoad(self.ctx.buffers[bias_node.id], [j_var])
         c_idx = Binary(Binary(i_var, "*", N_expr), "+", j_var)
 
-        k_body = Block([
-            LetStmt(acc_var, Binary(acc_var, "+", Binary(a_load, "*", b_load)), Block([])),
-        ])
+        k_body = Block(
+            [
+                LetStmt(acc_var, Binary(acc_var, "+", Binary(a_load, "*", b_load)), Block([])),
+            ]
+        )
         k_loop = For(k_var, Const(0), K_expr, k_body)
 
         with_relu = node.op_type == OpType.FUSED_MATMUL_BIAS_RELU
@@ -497,9 +524,13 @@ class GraphLowering:
 
         store = self._create_store(node, [c_idx], v_expr)
 
-        j_body = Block([
-            LetStmt(acc_var, Const(0.0), Block([k_loop, LetStmt(v_var, v_expr, Block([store]))])),
-        ])
+        j_body = Block(
+            [
+                LetStmt(
+                    acc_var, Const(0.0), Block([k_loop, LetStmt(v_var, v_expr, Block([store]))])
+                ),
+            ]
+        )
 
         j_loop = For(j_var, Const(0), N_expr, j_body)
         i_loop = For(i_var, Const(0), M_expr, Block([j_loop]))
@@ -519,7 +550,9 @@ class GraphLowering:
             result = Binary(result, "*", part)
         return result
 
-    def _create_load_with_broadcast(self, src_node: Node, dst_node: Node, linear_idx: Var) -> TIRExpr:
+    def _create_load_with_broadcast(
+        self, src_node: Node, dst_node: Node, linear_idx: Var
+    ) -> TIRExpr:
         src_sym = self.ctx.sym_shapes.get(src_node.id, ())
         dst_sym = self.ctx.sym_shapes.get(dst_node.id, ())
 
@@ -530,7 +563,11 @@ class GraphLowering:
             return BufferLoad(self.ctx.buffers[src_node.id], [Const(0)])
 
         if len(src_sym) == 1 and len(dst_sym) >= 1 and src_sym[0] == dst_sym[-1]:
-            idx = Binary(linear_idx, "%", Var(dst_sym[-1]) if not dst_sym[-1].isdigit() else Const(int(dst_sym[-1])))
+            idx = Binary(
+                linear_idx,
+                "%",
+                Var(dst_sym[-1]) if not dst_sym[-1].isdigit() else Const(int(dst_sym[-1])),
+            )
             return BufferLoad(self.ctx.buffers[src_node.id], [idx])
 
         src_idx = self._broadcast_index_expr(src_node, dst_node, linear_idx)
@@ -564,7 +601,9 @@ class GraphLowering:
             result = Binary(result, "+", t)
         return result
 
-    def _reduce_dst_index_expr(self, src_node: Node, dst_node: Node, axes: Tuple[int, ...], idx_var: Var) -> TIRExpr:
+    def _reduce_dst_index_expr(
+        self, src_node: Node, dst_node: Node, axes: Tuple[int, ...], idx_var: Var
+    ) -> TIRExpr:
         dst_sym = self.ctx.sym_shapes.get(dst_node.id, ())
         if not dst_sym:
             return Const(0)

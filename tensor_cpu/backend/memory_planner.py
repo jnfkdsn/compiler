@@ -30,7 +30,9 @@ class MemoryPlannerMixin:
                     use_count[in_id] += 1
         return use_count
 
-    def _assign_node_storage(self, *, node: Node, output_node: Node, state: MemoryPlannerState) -> None:
+    def _assign_node_storage(
+        self, *, node: Node, output_node: Node, state: MemoryPlannerState
+    ) -> None:
         if node.id == output_node.id:
             state.names[node.id] = "out_ptr"
             return
@@ -59,7 +61,9 @@ class MemoryPlannerMixin:
         state.workspace_slots.append((slot_name, numel))
         state.workspace_sym.append((slot_name, sym_key))
 
-    def _release_consumed_storage(self, *, node: Node, use_count: Dict[int, int], state: MemoryPlannerState) -> None:
+    def _release_consumed_storage(
+        self, *, node: Node, use_count: Dict[int, int], state: MemoryPlannerState
+    ) -> None:
         if not self.enable_memory_planner:
             return
         for in_id in node.inputs:

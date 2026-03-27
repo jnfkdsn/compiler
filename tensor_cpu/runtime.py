@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ctypes
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -12,23 +13,26 @@ from typing import List
 
 import numpy as np
 
-import re
-
 from .abi import decode_abi_status
 from .backend.codegen import CppCodegen, GeneratedKernel
 from .ir.graph import Graph, Node
 
+_MAX_RANK = 8  # ABI 支持的最大秩（8）
 
-_MAX_RANK = 8 #ABI 支持的最大秩（8）
 
-
-class TensorDesc(ctypes.Structure): #C++ kernel 以此结构读取张量信息，运行时 ABI 描述符
+class TensorDesc(ctypes.Structure):  # C++ kernel 以此结构读取张量信息，运行时 ABI 描述符
     _fields_ = [
-        ("data", ctypes.c_void_p), #指向张量数据的指针
-        ("numel", ctypes.c_longlong), #张量元素总数
-        ("rank", ctypes.c_longlong), #张量秩（维度数量）
-        ("shape", ctypes.c_longlong * _MAX_RANK), #张量每个维度的大小，长度为_MAX_RANK，不足部分填1
-        ("strides", ctypes.c_longlong * _MAX_RANK), #张量每个维度的步长，长度为_MAX_RANK，不足部分填0
+        ("data", ctypes.c_void_p),  # 指向张量数据的指针
+        ("numel", ctypes.c_longlong),  # 张量元素总数
+        ("rank", ctypes.c_longlong),  # 张量秩（维度数量）
+        (
+            "shape",
+            ctypes.c_longlong * _MAX_RANK,
+        ),  # 张量每个维度的大小，长度为_MAX_RANK，不足部分填1
+        (
+            "strides",
+            ctypes.c_longlong * _MAX_RANK,
+        ),  # 张量每个维度的步长，长度为_MAX_RANK，不足部分填0
     ]
 
 
@@ -131,23 +135,35 @@ class JITModule:
         except Exception:
             pass
 
-    def _eval_sym_dim(self, expr: str, input_shapes: list[tuple[int, ...]]) -> int:#将符号维度表达式解析为整数：若匹配 _SYM_DIM_RE，从 input_shapes 中取对应维度；否则尝试 int(expr)
+    def _eval_sym_dim(
+        self, expr: str, input_shapes: list[tuple[int, ...]]
+    ) -> (
+        int
+    ):  # 将符号维度表达式解析为整数：若匹配 _SYM_DIM_RE，从 input_shapes 中取对应维度；否则尝试 int(expr)
         """Evaluate a symbolic dimension expression given actual input shapes."""
         m = self._SYM_DIM_RE.match(expr)
-        if m: 
+        if m:
             return input_shapes[int(m.group(1))][int(m.group(2))]
         try:
-            return int(expr) 
+            return int(expr)
         except ValueError:
             raise ValueError(f"Cannot evaluate symbolic dim: {expr}")
 
-    def _compute_output_shape(self, input_shapes: list[tuple[int, ...]]) -> tuple[int, ...]:#对符号表达式 output_sym_shape 中的每个维度表达式调用 _eval_sym_dim 计算实际维度大小，返回结果
+    def _compute_output_shape(
+        self, input_shapes: list[tuple[int, ...]]
+    ) -> tuple[
+        int, ...
+    ]:  # 对符号表达式 output_sym_shape 中的每个维度表达式调用 _eval_sym_dim 计算实际维度大小，返回结果
         """Compute output shape from symbolic expressions and actual input shapes."""
         if not self.output_sym_shape:
             return self.output_shape
         return tuple(self._eval_sym_dim(d, input_shapes) for d in self.output_sym_shape)
 
-    def _eval_workspace_size(self, input_shapes: list[tuple[int, ...]]) -> int: #计算工作空间大小：对 workspace_slots 中的每个符号维度表达式调用 _eval_sym_dim 计算实际大小，并累加总和返回
+    def _eval_workspace_size(
+        self, input_shapes: list[tuple[int, ...]]
+    ) -> (
+        int
+    ):  # 计算工作空间大小：对 workspace_slots 中的每个符号维度表达式调用 _eval_sym_dim 计算实际大小，并累加总和返回
         """Compute total workspace size in elements from symbolic slot dims."""
         total = 0
         for _, sym_dims in self.workspace_slots:
@@ -161,15 +177,21 @@ class JITModule:
         if not inputs:
             raise ValueError("At least one input is required.")
         if validate_inputs and len(inputs) != len(self.input_ranks):
-            raise ValueError(f"Expected {len(self.input_ranks)} inputs, got {len(inputs)}") #输入校验
+            raise ValueError(
+                f"Expected {len(self.input_ranks)} inputs, got {len(inputs)}"
+            )  # 输入校验
 
         in_arrays = [np.asarray(x, dtype=self._np_dtype, order="C") for x in inputs]
         if validate_inputs:
             for idx, (arr, expected_rank) in enumerate(zip(in_arrays, self.input_ranks)):
                 if arr.ndim != expected_rank:
-                    raise ValueError(f"Input {idx} rank mismatch: expected {expected_rank}, got {arr.ndim}")
+                    raise ValueError(
+                        f"Input {idx} rank mismatch: expected {expected_rank}, got {arr.ndim}"
+                    )
             if self.exact_input_shapes:
-                for idx, (arr, expected_shape) in enumerate(zip(in_arrays, self.exact_input_shapes)):
+                for idx, (arr, expected_shape) in enumerate(
+                    zip(in_arrays, self.exact_input_shapes)
+                ):
                     if tuple(arr.shape) != tuple(expected_shape):
                         raise ValueError(
                             f"Input {idx} shape mismatch: expected exact traced shape {expected_shape}, got {tuple(arr.shape)}"
@@ -181,7 +203,7 @@ class JITModule:
         except (IndexError, KeyError):
             # Fall back to letting the C++ kernel report the ABI error
             out_shape = self.output_shape
-        out = np.empty(out_shape, dtype=self._np_dtype)#构建输入输出
+        out = np.empty(out_shape, dtype=self._np_dtype)  # 构建输入输出
         in_desc_array_t = TensorDesc * len(in_arrays)
         in_descs = in_desc_array_t(*[_desc_from_array(arr) for arr in in_arrays])
         out_desc = _desc_from_array(out)
@@ -228,9 +250,9 @@ class JITEngine:
         self.enable_memory_planner = enable_memory_planner
         self.passes = passes
 
-    def compile_graph(self, graph: Graph) -> JITModule: #编译Graph IR为c++代码，
+    def compile_graph(self, graph: Graph) -> JITModule:  # 编译Graph IR为c++代码，
         _ensure_single_output(graph)
-        
+
         # Determine passes to run: constructor arg overrides env var.
         passes_to_run = self.passes
         if passes_to_run is None:
@@ -258,11 +280,11 @@ class JITEngine:
         lib_name = "kernel.dll" if _is_windows() else "libkernel.so"
         lib_path = tmp_path / lib_name
 
-        cpp_path.write_text(kernel.source, encoding="utf-8") #将生成的c++代码写入临时文件
+        cpp_path.write_text(kernel.source, encoding="utf-8")  # 将生成的c++代码写入临时文件
 
         compiler = _find_compiler()
-        cmd = _build_command(compiler, cpp_path, lib_path, openmp=True) #构建编译命令
-        proc = subprocess.run(cmd, capture_output=True, text=True) #执行编译命令为so/dll文件
+        cmd = _build_command(compiler, cpp_path, lib_path, openmp=True)  # 构建编译命令
+        proc = subprocess.run(cmd, capture_output=True, text=True)  # 执行编译命令为so/dll文件
         if proc.returncode != 0:
             raise JITCompileError(
                 f"Compile failed with {compiler}\ncmd: {' '.join(cmd)}\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
@@ -279,7 +301,7 @@ class JITEngine:
             workspace_slots=kernel.workspace_slots,
             exact_input_shapes=kernel.exact_input_shapes,
             tmp_dir=tmp_path,
-        )#编译成功后，返回一个JITModule实例，包含了编译好的库路径、输入输出节点信息等
+        )  # 编译成功后，返回一个JITModule实例，包含了编译好的库路径、输入输出节点信息等
 
 
 def _num_input_nodes(graph: Graph) -> int:

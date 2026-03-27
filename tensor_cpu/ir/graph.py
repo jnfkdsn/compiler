@@ -7,7 +7,6 @@ from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 from .ops import OpType
 
-
 Shape = Tuple[int, ...]
 
 
@@ -32,7 +31,7 @@ class Graph:
 
     def __init__(self) -> None:
         self._nodes: Dict[int, Node] = {}
-        self._order: List[int] = [] #图优化
+        self._order: List[int] = []  # 图优化
         self._next_id = 0
         self.output_ids: List[int] = []
 
@@ -93,7 +92,7 @@ class Graph:
             self._nodes.pop(node_id, None)
         self._order = [node_id for node_id in self._order if node_id not in to_remove]
 
-    def topological_sort(self) -> List[Node]: #node拓扑排序
+    def topological_sort(self) -> List[Node]:  # node拓扑排序
         """Return nodes in topological order using Kahn's algorithm."""
         indegree: Dict[int, int] = {node.id: 0 for node in self.nodes()}
         outgoing: Dict[int, List[int]] = {node.id: [] for node in self.nodes()}

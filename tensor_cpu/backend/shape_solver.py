@@ -49,7 +49,14 @@ class ShapeSolverMixin:
             self._sym_str[node.id] = self._sym_strides_from(dims)
             return
 
-        if node.op_type in (OpType.ADD, OpType.SUB, OpType.MUL, OpType.DIV, OpType.RELU_GRAD, OpType.EQ):
+        if node.op_type in (
+            OpType.ADD,
+            OpType.SUB,
+            OpType.MUL,
+            OpType.DIV,
+            OpType.RELU_GRAD,
+            OpType.EQ,
+        ):
             lhs = self._sym.get(node.inputs[0], ())
             rhs = self._sym.get(node.inputs[1], ())
             dims = self._sym_broadcast(lhs, rhs)
@@ -152,7 +159,9 @@ class ShapeSolverMixin:
             return f"((long long)({dims[0]}))"
         return "(" + " * ".join(f"(long long)({d})" for d in dims) + ")"
 
-    def _broadcast_index_expr(self, *, dst_node: Node, src_node: Node, linear_index_var: str) -> str:
+    def _broadcast_index_expr(
+        self, *, dst_node: Node, src_node: Node, linear_index_var: str
+    ) -> str:
         src_sym = self._sym.get(src_node.id, ())
         dst_sym = self._sym.get(dst_node.id, ())
 
@@ -169,7 +178,9 @@ class ShapeSolverMixin:
             dst_axes = [i for i, d in enumerate(dst_sym) if d != "1"]
             terms: List[str] = []
             for src_axis, dst_axis in enumerate(dst_axes):
-                coord_expr = f"(({linear_index_var} / ({dst_strides[dst_axis]})) % ({dst_sym[dst_axis]}))"
+                coord_expr = (
+                    f"(({linear_index_var} / ({dst_strides[dst_axis]})) % ({dst_sym[dst_axis]}))"
+                )
                 src_stride = src_strides[src_axis]
                 if src_stride == "1":
                     terms.append(coord_expr)
@@ -208,7 +219,9 @@ class ShapeSolverMixin:
             return "0"
         return " + ".join(terms)
 
-    def _reduce_dst_index_expr(self, *, src_node: Node, dst_node: Node, axes: tuple[int, ...], idx_var: str) -> str:
+    def _reduce_dst_index_expr(
+        self, *, src_node: Node, dst_node: Node, axes: tuple[int, ...], idx_var: str
+    ) -> str:
         dst_sym = self._sym.get(dst_node.id, ())
         if not dst_sym:
             return "0"

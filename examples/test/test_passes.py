@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sys
 import time
+
 import numpy as np
 
 # ensure examples/ is on path so `import tensor_cpu` resolves when running from examples/
@@ -19,9 +20,15 @@ from tensor_cpu.static_graph import StaticGraph
 
 def test_constant_fold_simple():
     g = Graph()
-    c1 = g.add_node(op_type=OpType.CONST, name="c1", shape=(), dtype="float32", attrs={"value": 1.5})
-    c2 = g.add_node(op_type=OpType.CONST, name="c2", shape=(), dtype="float32", attrs={"value": 2.0})
-    add = g.add_node(op_type=OpType.ADD, name="add", inputs=[c1.id, c2.id], shape=(), dtype="float32")
+    c1 = g.add_node(
+        op_type=OpType.CONST, name="c1", shape=(), dtype="float32", attrs={"value": 1.5}
+    )
+    c2 = g.add_node(
+        op_type=OpType.CONST, name="c2", shape=(), dtype="float32", attrs={"value": 2.0}
+    )
+    add = g.add_node(
+        op_type=OpType.ADD, name="add", inputs=[c1.id, c2.id], shape=(), dtype="float32"
+    )
     g.mark_output(add.id)
 
     num = constant_fold(g)
@@ -39,9 +46,15 @@ def test_constant_fold_simple():
 def test_cse_simple():
     g = Graph()
     x = g.add_node(op_type=OpType.INPUT, name="x", shape=(4,), dtype="float32")
-    c = g.add_node(op_type=OpType.CONST, name="one", shape=(), dtype="float32", attrs={"value": 1.0})
-    a1 = g.add_node(op_type=OpType.ADD, name="add1", inputs=[x.id, c.id], shape=(4,), dtype="float32")
-    a2 = g.add_node(op_type=OpType.ADD, name="add2", inputs=[x.id, c.id], shape=(4,), dtype="float32")
+    c = g.add_node(
+        op_type=OpType.CONST, name="one", shape=(), dtype="float32", attrs={"value": 1.0}
+    )
+    a1 = g.add_node(
+        op_type=OpType.ADD, name="add1", inputs=[x.id, c.id], shape=(4,), dtype="float32"
+    )
+    a2 = g.add_node(
+        op_type=OpType.ADD, name="add2", inputs=[x.id, c.id], shape=(4,), dtype="float32"
+    )
     # two identical adds
     g.mark_output(a2.id)
 

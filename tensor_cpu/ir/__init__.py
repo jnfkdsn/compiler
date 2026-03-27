@@ -9,65 +9,49 @@ This package provides layered IRs:
 """
 
 from .cpp_ast import (
-    ASTNode,
-    ASTVisitor,
-    ASTTransformer,
-    Expr,
-    Stmt,
-    Identifier,
-    Literal,
-    BinaryOp,
-    UnaryOp,
-    TernaryOp,
-    Call,
-    Index,
-    Cast,
-    ExprStmt,
     Assign,
-    VarDecl,
+    ASTNode,
+    ASTTransformer,
+    ASTVisitor,
+    BinaryOp,
     Block,
-    ForLoop,
-    WhileLoop,
-    If,
-    Return,
-    FunctionDecl,
-    StructDecl,
-    Include,
+    Call,
+    Cast,
     Define,
+    Expr,
+    ExprStmt,
+    ForLoop,
+    FunctionDecl,
+    Identifier,
+    If,
+    Include,
+    Index,
+    Literal,
     Pragma,
-    RawCode,
     Program,
+    RawCode,
+    Return,
+    Stmt,
+    StructDecl,
+    TernaryOp,
+    UnaryOp,
+    VarDecl,
+    WhileLoop,
 )
-
 from .cpp_codegen import CodegenVisitor, generate_cpp
-
-from .tir import (
-    TIRNode,
-    TIRExpr,
-    TIRStmt,
-    TIRVisitor,
-    TIRTransformer,
-    Var as TIRVar,
-    Const as TIRConst,
-    Binary as TIRBinary,
-    Unary as TIRUnary,
-    Ternary as TIRTernary,
-    CallExpr as TIRCallExpr,
-    BufferLoad,
-    BufferStore,
-    For as TIRFor,
-    Block as TIRBlock,
-    IfStmt,
-    Allocate,
-    LetStmt,
-    Buffer,
-    PrimFunc,
-    IRModule,
-    LoopAnnotation,
-)
-
 from .lowering import GraphLowering, LoweringContext
-
+from .tir import Allocate
+from .tir import Binary as TIRBinary
+from .tir import Block as TIRBlock
+from .tir import Buffer, BufferLoad, BufferStore
+from .tir import CallExpr as TIRCallExpr
+from .tir import Const as TIRConst
+from .tir import For as TIRFor
+from .tir import IfStmt, IRModule, LetStmt, LoopAnnotation, PrimFunc
+from .tir import Ternary as TIRTernary
+from .tir import TIRExpr, TIRNode, TIRStmt, TIRTransformer, TIRVisitor
+from .tir import Unary as TIRUnary
+from .tir import Var as TIRVar
 from .tir_to_cpp import TIRToCppConverter, convert_tir_to_cpp
 
 __all__ = [

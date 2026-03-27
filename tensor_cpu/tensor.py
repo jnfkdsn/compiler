@@ -24,10 +24,10 @@ from .frontend.tracer import (
 from .ir.ops import OpType
 from .ir.shape_inference import normalize_reduce_axes
 
-
 # ---------------------------------------------------------------------------
 # Unified dispatch helpers (eager + trace + backward via dispatcher)
 # ---------------------------------------------------------------------------
+
 
 def _dispatch_binary(op_type: OpType, lhs: "Tensor", rhs: "Tensor") -> "Tensor":
     if lhs.data is None or rhs.data is None:
@@ -140,6 +140,7 @@ def _dispatch_reduce(
         _reduce_grad_fn = dispatcher.reduce_grad_rule(op_type)
 
         if _reduce_grad_fn is not None:
+
             def _backward() -> None:
                 if out.grad is None or not src.requires_grad:
                     return
@@ -154,8 +155,8 @@ def _dispatch_reduce(
 class Tensor:
     """A lightweight tensor with eager execution and optional graph node."""
 
-    data: Optional[np.ndarray]   #eager 
-    node: Optional[object]      #tracing
+    data: Optional[np.ndarray]  # eager
+    node: Optional[object]  # tracing
     name: Optional[str] = None
     requires_grad: bool = False
     grad: Optional[np.ndarray] = None

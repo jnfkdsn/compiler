@@ -143,7 +143,9 @@ class BatchNorm1d(Module):
         if x.data is None:
             raise RuntimeError("BatchNorm1d requires eager tensor data.")
         if x.data.ndim != 2 or x.data.shape[1] != self.num_features:
-            raise ValueError(f"BatchNorm1d expects input shape (N, {self.num_features}), got {x.data.shape}")
+            raise ValueError(
+                f"BatchNorm1d expects input shape (N, {self.num_features}), got {x.data.shape}"
+            )
 
         eps_t = Tensor.scalar(self.eps, requires_grad=False)
 
@@ -153,11 +155,22 @@ class BatchNorm1d(Module):
             var = (centered * centered).mean(axis=0, keepdims=True)
 
             if self.track_running_stats:
-                self.running_mean = (1.0 - self.momentum) * self.running_mean + self.momentum * mean.data
-                self.running_var = (1.0 - self.momentum) * self.running_var + self.momentum * var.data
+                self.running_mean = (
+                    1.0 - self.momentum
+                ) * self.running_mean + self.momentum * mean.data
+                self.running_var = (
+                    1.0 - self.momentum
+                ) * self.running_var + self.momentum * var.data
         else:
-            mean = Tensor(data=self.running_mean.copy(), node=None, name="bn_running_mean", requires_grad=False)
-            var = Tensor(data=self.running_var.copy(), node=None, name="bn_running_var", requires_grad=False)
+            mean = Tensor(
+                data=self.running_mean.copy(),
+                node=None,
+                name="bn_running_mean",
+                requires_grad=False,
+            )
+            var = Tensor(
+                data=self.running_var.copy(), node=None, name="bn_running_var", requires_grad=False
+            )
             centered = x - mean
 
         std = ((var + eps_t).log() * 0.5).exp()
@@ -276,7 +289,9 @@ class SelfAttention(Module):
         if x.data is None:
             raise RuntimeError("SelfAttention requires eager tensor data.")
         if x.data.ndim != 2 or x.data.shape[1] != self.d_model:
-            raise ValueError(f"SelfAttention expects input shape (L, {self.d_model}), got {x.data.shape}")
+            raise ValueError(
+                f"SelfAttention expects input shape (L, {self.d_model}), got {x.data.shape}"
+            )
 
         q = self.q_proj(x)
         k = self.k_proj(x)

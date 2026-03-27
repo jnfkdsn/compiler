@@ -40,6 +40,7 @@ class Stmt(ASTNode):
 @dataclass(slots=True)
 class Identifier(Expr):
     """A simple identifier (variable name)."""
+
     name: str
 
     def accept(self, visitor: "ASTVisitor") -> Any:
@@ -49,6 +50,7 @@ class Identifier(Expr):
 @dataclass(slots=True)
 class Literal(Expr):
     """A literal value (number, string, etc.)."""
+
     value: Union[str, int, float]
     dtype: Optional[str] = None
 
@@ -59,6 +61,7 @@ class Literal(Expr):
 @dataclass(slots=True)
 class BinaryOp(Expr):
     """Binary operation: lhs op rhs."""
+
     lhs: Expr
     op: str
     rhs: Expr
@@ -70,6 +73,7 @@ class BinaryOp(Expr):
 @dataclass(slots=True)
 class UnaryOp(Expr):
     """Unary operation: op operand."""
+
     op: str
     operand: Expr
 
@@ -80,6 +84,7 @@ class UnaryOp(Expr):
 @dataclass(slots=True)
 class TernaryOp(Expr):
     """Ternary conditional: cond ? true_expr : false_expr."""
+
     cond: Expr
     true_expr: Expr
     false_expr: Expr
@@ -91,6 +96,7 @@ class TernaryOp(Expr):
 @dataclass(slots=True)
 class Call(Expr):
     """Function call: func(args...)."""
+
     func: str
     args: List[Expr] = field(default_factory=list)
 
@@ -101,6 +107,7 @@ class Call(Expr):
 @dataclass(slots=True)
 class Index(Expr):
     """Array index access: base[index]."""
+
     base: Expr
     index: Expr
 
@@ -111,6 +118,7 @@ class Index(Expr):
 @dataclass(slots=True)
 class Cast(Expr):
     """Type cast: (type)expr."""
+
     target_type: str
     expr: Expr
 
@@ -121,6 +129,7 @@ class Cast(Expr):
 @dataclass(slots=True)
 class ExprStmt(Stmt):
     """Expression statement (expression followed by semicolon)."""
+
     expr: Expr
 
     def accept(self, visitor: "ASTVisitor") -> Any:
@@ -130,6 +139,7 @@ class ExprStmt(Stmt):
 @dataclass(slots=True)
 class Assign(Stmt):
     """Assignment statement: lhs = rhs; or lhs += rhs; etc."""
+
     lhs: Expr
     rhs: Expr
     op: str = "="
@@ -141,6 +151,7 @@ class Assign(Stmt):
 @dataclass(slots=True)
 class VarDecl(Stmt):
     """Variable declaration: type name = init; or type name;."""
+
     var_type: str
     name: str
     init: Optional[Expr] = None
@@ -153,6 +164,7 @@ class VarDecl(Stmt):
 @dataclass(slots=True)
 class Block(Stmt):
     """Block of statements: { stmts... }."""
+
     stmts: List[Stmt] = field(default_factory=list)
 
     def accept(self, visitor: "ASTVisitor") -> Any:
@@ -162,6 +174,7 @@ class Block(Stmt):
 @dataclass(slots=True)
 class ForLoop(Stmt):
     """For loop: for (init; cond; update) body."""
+
     init: Optional[Stmt] = None
     cond: Optional[Expr] = None
     update: Optional[Stmt] = None
@@ -174,6 +187,7 @@ class ForLoop(Stmt):
 @dataclass(slots=True)
 class WhileLoop(Stmt):
     """While loop: while (cond) body."""
+
     cond: Expr
     body: Stmt = field(default_factory=lambda: Block())
 
@@ -184,6 +198,7 @@ class WhileLoop(Stmt):
 @dataclass(slots=True)
 class If(Stmt):
     """If statement: if (cond) then_stmt else else_stmt."""
+
     cond: Expr
     then_stmt: Stmt
     else_stmt: Optional[Stmt] = None
@@ -195,6 +210,7 @@ class If(Stmt):
 @dataclass(slots=True)
 class Return(Stmt):
     """Return statement: return expr; or return;."""
+
     expr: Optional[Expr] = None
 
     def accept(self, visitor: "ASTVisitor") -> Any:
@@ -204,6 +220,7 @@ class Return(Stmt):
 @dataclass(slots=True)
 class FunctionDecl(Stmt):
     """Function declaration."""
+
     return_type: str
     name: str
     params: List[Tuple[str, str]]
@@ -218,6 +235,7 @@ class FunctionDecl(Stmt):
 @dataclass(slots=True)
 class StructDecl(Stmt):
     """Struct declaration."""
+
     name: str
     fields: List[Tuple[str, str]]
 
@@ -228,6 +246,7 @@ class StructDecl(Stmt):
 @dataclass(slots=True)
 class Include(Stmt):
     """Include directive."""
+
     header: str
     is_system: bool = True
 
@@ -238,6 +257,7 @@ class Include(Stmt):
 @dataclass(slots=True)
 class Define(Stmt):
     """Preprocessor define."""
+
     name: str
     value: Optional[str] = None
 
@@ -248,6 +268,7 @@ class Define(Stmt):
 @dataclass(slots=True)
 class Pragma(Stmt):
     """Pragma directive."""
+
     content: str
 
     def accept(self, visitor: "ASTVisitor") -> Any:
@@ -257,6 +278,7 @@ class Pragma(Stmt):
 @dataclass(slots=True)
 class RawCode(Stmt):
     """Raw C++ code (for cases that don't fit the AST model)."""
+
     code: str
 
     def accept(self, visitor: "ASTVisitor") -> Any:
@@ -266,6 +288,7 @@ class RawCode(Stmt):
 @dataclass(slots=True)
 class Program(ASTNode):
     """A complete C++ program (translation unit)."""
+
     includes: List[Include] = field(default_factory=list)
     defines: List[Define] = field(default_factory=list)
     pragmas: List[Pragma] = field(default_factory=list)

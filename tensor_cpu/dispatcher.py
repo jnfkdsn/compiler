@@ -24,17 +24,17 @@ import numpy as np
 from .autodiff.vjp import _expand_reduce_grad, _sum_to_shape, get_vjp_rule
 from .ir.ops import OpType
 
-
 # ---------------------------------------------------------------------------
 # Thread-local trace state  (replaces global _TRACE_STATE in old tracer.py)
 # ---------------------------------------------------------------------------
+
 
 class _TraceState:
     __slots__ = ("enabled", "graph")
 
     def __init__(self) -> None:
         self.enabled: bool = False
-        self.graph: Any = None            # Optional[Graph]
+        self.graph: Any = None  # Optional[Graph]
 
 
 _tls = threading.local()

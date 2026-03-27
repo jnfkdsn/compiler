@@ -43,6 +43,7 @@ class TIRStmt(TIRNode):
 
 class LoopAnnotation(Enum):
     """Annotations for loop optimization hints."""
+
     NONE = auto()
     UNROLL = auto()
     VECTORIZE = auto()
@@ -53,6 +54,7 @@ class LoopAnnotation(Enum):
 @dataclass(slots=True)
 class Var(TIRExpr):
     """A variable (iteration variable or buffer name)."""
+
     name: str
     dtype: str = "float32"
 
@@ -63,6 +65,7 @@ class Var(TIRExpr):
 @dataclass(slots=True)
 class Const(TIRExpr):
     """A constant value."""
+
     value: Union[int, float, str]
     dtype: str = "int32"
 
@@ -73,6 +76,7 @@ class Const(TIRExpr):
 @dataclass(slots=True)
 class Binary(TIRExpr):
     """Binary arithmetic operation."""
+
     lhs: TIRExpr
     op: str
     rhs: TIRExpr
@@ -84,6 +88,7 @@ class Binary(TIRExpr):
 @dataclass(slots=True)
 class Unary(TIRExpr):
     """Unary operation."""
+
     op: str
     operand: TIRExpr
 
@@ -94,6 +99,7 @@ class Unary(TIRExpr):
 @dataclass(slots=True)
 class Ternary(TIRExpr):
     """Ternary conditional expression."""
+
     cond: TIRExpr
     true_expr: TIRExpr
     false_expr: TIRExpr
@@ -105,6 +111,7 @@ class Ternary(TIRExpr):
 @dataclass(slots=True)
 class CallExpr(TIRExpr):
     """Function call expression."""
+
     func: str
     args: List[TIRExpr] = field(default_factory=list)
 
@@ -115,6 +122,7 @@ class CallExpr(TIRExpr):
 @dataclass(slots=True)
 class BufferLoad(TIRExpr):
     """Load a value from a buffer: buffer[indices...]."""
+
     buffer: Var
     indices: List[TIRExpr] = field(default_factory=list)
 
@@ -125,6 +133,7 @@ class BufferLoad(TIRExpr):
 @dataclass(slots=True)
 class BufferStore(TIRStmt):
     """Store a value to a buffer: buffer[indices...] = value."""
+
     buffer: Var
     value: TIRExpr
     indices: List[TIRExpr] = field(default_factory=list)
@@ -136,6 +145,7 @@ class BufferStore(TIRStmt):
 @dataclass(slots=True)
 class For(TIRStmt):
     """A for loop with explicit iteration variable and bounds."""
+
     loop_var: Var
     start: TIRExpr
     stop: TIRExpr
@@ -149,6 +159,7 @@ class For(TIRStmt):
 @dataclass(slots=True)
 class Block(TIRStmt):
     """A block of statements."""
+
     stmts: List[TIRStmt] = field(default_factory=list)
 
     def accept(self, visitor: "TIRVisitor") -> Any:
@@ -158,6 +169,7 @@ class Block(TIRStmt):
 @dataclass(slots=True)
 class IfStmt(TIRStmt):
     """If statement."""
+
     cond: TIRExpr
     then_body: TIRStmt
     else_body: Optional[TIRStmt] = None
@@ -169,6 +181,7 @@ class IfStmt(TIRStmt):
 @dataclass(slots=True)
 class Allocate(TIRStmt):
     """Allocate a buffer."""
+
     buffer: Var
     shape: List[TIRExpr]
     dtype: str = "float32"
@@ -181,6 +194,7 @@ class Allocate(TIRStmt):
 @dataclass(slots=True)
 class LetStmt(TIRStmt):
     """Let binding: let var = value in body."""
+
     var: Var
     value: TIRExpr
     body: TIRStmt
@@ -192,6 +206,7 @@ class LetStmt(TIRStmt):
 @dataclass(slots=True)
 class AssertStmt(TIRStmt):
     """Assertion statement."""
+
     cond: TIRExpr
     message: str
     body: Optional[TIRStmt] = None
@@ -203,6 +218,7 @@ class AssertStmt(TIRStmt):
 @dataclass(slots=True)
 class ProducerStore(TIRStmt):
     """Store to a producer (output tensor)."""
+
     producer: Var
     value: TIRExpr
     indices: List[TIRExpr] = field(default_factory=list)
@@ -214,6 +230,7 @@ class ProducerStore(TIRStmt):
 @dataclass(slots=True)
 class AttrStmt(TIRStmt):
     """Attribute statement for annotations."""
+
     node: TIRNode
     attr_key: str
     value: TIRExpr
@@ -226,6 +243,7 @@ class AttrStmt(TIRStmt):
 @dataclass(slots=True)
 class Buffer:
     """Represents a tensor buffer with shape and strides."""
+
     name: str
     shape: List[TIRExpr]
     dtype: str = "float32"
@@ -241,6 +259,7 @@ class Buffer:
 @dataclass(slots=True)
 class PrimFunc(TIRNode):
     """A primitive function in TIR."""
+
     name: str
     params: List[Var]
     body: TIRStmt
@@ -254,6 +273,7 @@ class PrimFunc(TIRNode):
 @dataclass(slots=True)
 class IRModule(TIRNode):
     """A module containing multiple PrimFuncs."""
+
     functions: Dict[str, PrimFunc] = field(default_factory=dict)
 
     def accept(self, visitor: "TIRVisitor") -> Any:
@@ -444,6 +464,4 @@ class TIRTransformer(TIRVisitor):
         )
 
     def visit_ir_module(self, node: IRModule) -> TIRNode:
-        return IRModule(
-            functions={k: v.accept(self) for k, v in node.functions.items()}
-        )
+        return IRModule(functions={k: v.accept(self) for k, v in node.functions.items()})

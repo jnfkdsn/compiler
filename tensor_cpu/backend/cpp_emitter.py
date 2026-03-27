@@ -28,11 +28,19 @@ class CppEmitterMixin:
         if output_node.op_type == OpType.INPUT:
             output_name = f"arg{inputs.index(output_node)}"
         signature = ", ".join(
-            ["const TensorDesc* inputs", "long long num_inputs", "TensorDesc* out_desc", "void* workspace"]
+            [
+                "const TensorDesc* inputs",
+                "long long num_inputs",
+                "TensorDesc* out_desc",
+                "void* workspace",
+            ]
         )
 
         ctype = "double" if self._compute_dtype == "float64" else "float"
-        input_bindings = [f"{ctype}* arg{i} = static_cast<{ctype}*>(inputs[{i}].data);" for i in range(len(inputs))]
+        input_bindings = [
+            f"{ctype}* arg{i} = static_cast<{ctype}*>(inputs[{i}].data);"
+            for i in range(len(inputs))
+        ]
 
         dim_declarations: List[str] = []
         for idx, node in enumerate(inputs):
@@ -47,12 +55,16 @@ class CppEmitterMixin:
                 if not offset_parts:
                     ws_declarations.append(f"{ctype}* {slot_name} = ws;")
                 else:
-                    ws_declarations.append(f"{ctype}* {slot_name} = ws + ({' + '.join(offset_parts)});")
+                    ws_declarations.append(
+                        f"{ctype}* {slot_name} = ws + ({' + '.join(offset_parts)});"
+                    )
                 offset_parts.append(numel_expr)
 
         input_guards: List[str] = []
         for i, node in enumerate(inputs):
-            input_guards.append(f"if (inputs[{i}].data == nullptr) return {int(AbiStatus.INPUT_DATA_NULL_BASE) + i};")
+            input_guards.append(
+                f"if (inputs[{i}].data == nullptr) return {int(AbiStatus.INPUT_DATA_NULL_BASE) + i};"
+            )
             input_guards.append(
                 f"if (inputs[{i}].rank != {node.rank}LL) return {int(AbiStatus.INPUT_RANK_MISMATCH_BASE) + i};"
             )
@@ -90,7 +102,7 @@ class CppEmitterMixin:
                 "    long long strides[kMaxRank];",
                 "};",
                 "",
-                f"extern \"C\" EXPORT int run_kernel({signature}) {{",
+                f'extern "C" EXPORT int run_kernel({signature}) {{',
                 f"    if (num_inputs != {len(inputs)}LL) return {int(AbiStatus.INPUT_COUNT_MISMATCH)};",
                 *[f"    {line}" for line in input_guards],
                 *[f"    {line}" for line in input_bindings],

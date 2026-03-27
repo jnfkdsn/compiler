@@ -59,7 +59,11 @@ class ElementwiseLoweringMixin:
                     init="long long i = 0",
                     cond=f"i < {total}",
                     inc="++i",
-                    body=[CppLine(f"{dst}[i] = (std::fabs({lhs}[{li}] - {rhs}[{ri}]) <= {eps}) ? {one} : {zero};")],
+                    body=[
+                        CppLine(
+                            f"{dst}[i] = (std::fabs({lhs}[{li}] - {rhs}[{ri}]) <= {eps}) ? {one} : {zero};"
+                        )
+                    ],
                 )
             ]
         )
@@ -219,7 +223,9 @@ class ElementwiseLoweringMixin:
         body: List[CppStmt] = [CppLine("long long src_idx = 0;"), CppLine("long long rem = i;")]
         for d in range(rank):
             src_dim_idx = rank - 1 - d
-            body.append(CppLine(f"long long c{d} = rem / ({dst_strides[d]}); rem %= ({dst_strides[d]});"))
+            body.append(
+                CppLine(f"long long c{d} = rem / ({dst_strides[d]}); rem %= ({dst_strides[d]});")
+            )
             body.append(CppLine(f"src_idx += c{d} * ({src_strides[src_dim_idx]});"))
         body.append(CppLine(f"{dst}[i] = {src}[src_idx];"))
 

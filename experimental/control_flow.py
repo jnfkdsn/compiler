@@ -21,6 +21,7 @@ from tensor_cpu.ir.ops import OpType
 
 class ControlFlowType(Enum):
     """Types of control flow operations."""
+
     IF = auto()
     ELSE = auto()
     ELIF = auto()
@@ -34,13 +35,14 @@ class ControlFlowType(Enum):
 @dataclass(slots=True)
 class SubGraph:
     """A subgraph representing a branch or loop body."""
+
     nodes: List[Node] = field(default_factory=list)
     input_ids: List[int] = field(default_factory=list)
     output_ids: List[int] = field(default_factory=list)
-    
+
     def add_node(self, node: Node) -> None:
         self.nodes.append(node)
-    
+
     def get_node(self, node_id: int) -> Optional[Node]:
         for n in self.nodes:
             if n.id == node_id:
@@ -51,16 +53,17 @@ class SubGraph:
 @dataclass(slots=True)
 class IfNode(Node):
     """Conditional branch node with true and false subgraphs.
-    
+
     Attributes:
         condition_node_id: ID of the node producing the condition value
         true_graph: Subgraph executed when condition is true
         false_graph: Subgraph executed when condition is false (else branch)
     """
+
     condition_node_id: int = -1
     true_graph: Optional[SubGraph] = None
     false_graph: Optional[SubGraph] = None
-    
+
     def __post_init__(self):
         self.op_type = OpType.CONTROL_FLOW
         self.attrs["cf_type"] = ControlFlowType.IF
@@ -69,14 +72,15 @@ class IfNode(Node):
 @dataclass(slots=True)
 class WhileNode(Node):
     """While loop node with condition and body subgraphs.
-    
+
     Attributes:
         condition_graph: Subgraph producing the loop condition
         body_graph: Subgraph executed on each iteration
     """
+
     condition_graph: Optional[SubGraph] = None
     body_graph: Optional[SubGraph] = None
-    
+
     def __post_init__(self):
         self.op_type = OpType.CONTROL_FLOW
         self.attrs["cf_type"] = ControlFlowType.WHILE
@@ -85,18 +89,19 @@ class WhileNode(Node):
 @dataclass(slots=True)
 class ForNode(Node):
     """For loop node with iterator and body subgraphs.
-    
+
     Attributes:
         iterable_node_id: ID of the node producing the iterable
         loop_var_name: Name of the loop variable
         body_graph: Subgraph executed on each iteration
         loop_var_node_id: ID of the node representing the loop variable
     """
+
     iterable_node_id: int = -1
     loop_var_name: str = ""
     body_graph: Optional[SubGraph] = None
     loop_var_node_id: int = -1
-    
+
     def __post_init__(self):
         self.op_type = OpType.CONTROL_FLOW
         self.attrs["cf_type"] = ControlFlowType.FOR
@@ -105,7 +110,7 @@ class ForNode(Node):
 @dataclass(slots=True)
 class BreakNode(Node):
     """Break statement node."""
-    
+
     def __post_init__(self):
         self.op_type = OpType.CONTROL_FLOW
         self.attrs["cf_type"] = ControlFlowType.BREAK
@@ -114,7 +119,7 @@ class BreakNode(Node):
 @dataclass(slots=True)
 class ContinueNode(Node):
     """Continue statement node."""
-    
+
     def __post_init__(self):
         self.op_type = OpType.CONTROL_FLOW
         self.attrs["cf_type"] = ControlFlowType.CONTINUE
@@ -122,12 +127,12 @@ class ContinueNode(Node):
 
 class ControlFlowGraph(Graph):
     """Extended Graph with control flow support."""
-    
+
     def __init__(self) -> None:
         super().__init__()
         self._control_flow_nodes: Dict[int, Union[IfNode, WhileNode, ForNode]] = {}
         self._loop_stack: List[int] = []
-    
+
     def add_if_node(
         self,
         condition_node_id: int,
@@ -150,7 +155,7 @@ class ControlFlowGraph(Graph):
         self._next_id += 1
         self._control_flow_nodes[node.id] = node
         return node
-    
+
     def add_while_node(
         self,
         name: str = "while",
@@ -172,7 +177,7 @@ class ControlFlowGraph(Graph):
         self._control_flow_nodes[node.id] = node
         self._loop_stack.append(node.id)
         return node
-    
+
     def add_for_node(
         self,
         iterable_node_id: int,
@@ -197,7 +202,7 @@ class ControlFlowGraph(Graph):
         self._control_flow_nodes[node.id] = node
         self._loop_stack.append(node.id)
         return node
-    
+
     def add_break_node(self, loop_id: int, name: str = "break") -> BreakNode:
         """Add a break node to the graph."""
         node = BreakNode(
@@ -213,7 +218,7 @@ class ControlFlowGraph(Graph):
         self._order.append(node.id)
         self._next_id += 1
         return node
-    
+
     def add_continue_node(self, loop_id: int, name: str = "continue") -> ContinueNode:
         """Add a continue node to the graph."""
         node = ContinueNode(
@@ -229,15 +234,15 @@ class ControlFlowGraph(Graph):
         self._order.append(node.id)
         self._next_id += 1
         return node
-    
+
     def get_control_flow_node(self, node_id: int) -> Optional[Union[IfNode, WhileNode, ForNode]]:
         """Get a control flow node by ID."""
         return self._control_flow_nodes.get(node_id)
-    
+
     def current_loop(self) -> Optional[int]:
         """Get the current loop ID (top of loop stack)."""
         return self._loop_stack[-1] if self._loop_stack else None
-    
+
     def pop_loop(self) -> Optional[int]:
         """Pop the current loop from the stack."""
         if self._loop_stack:
@@ -247,64 +252,64 @@ class ControlFlowGraph(Graph):
 
 class ControlFlowLowering:
     """Lower control flow nodes to C++ AST."""
-    
+
     def __init__(self, graph: ControlFlowGraph) -> None:
         self.graph = graph
-    
+
     def lower_if(self, node: IfNode, names: Dict[int, str]) -> List[str]:
         """Lower an if node to C++ code."""
         lines = []
         cond_name = names.get(node.condition_node_id, "cond")
-        
+
         lines.append(f"if ({cond_name}) {{")
-        
+
         if node.true_graph:
             for sub_node in node.true_graph.nodes:
                 lines.extend(self._lower_subgraph_node(sub_node, names))
-        
+
         if node.false_graph and node.false_graph.nodes:
             lines.append("} else {")
             for sub_node in node.false_graph.nodes:
                 lines.extend(self._lower_subgraph_node(sub_node, names))
-        
+
         lines.append("}")
         return lines
-    
+
     def lower_while(self, node: WhileNode, names: Dict[int, str]) -> List[str]:
         """Lower a while node to C++ code."""
         lines = []
-        
+
         lines.append("while (true) {")
-        
+
         if node.condition_graph:
             for sub_node in node.condition_graph.nodes:
                 lines.extend(self._lower_subgraph_node(sub_node, names))
-            
+
             cond_name = names.get(node.condition_graph.output_ids[-1], "cond")
             lines.append(f"if (!{cond_name}) break;")
-        
+
         if node.body_graph:
             for sub_node in node.body_graph.nodes:
                 lines.extend(self._lower_subgraph_node(sub_node, names))
-        
+
         lines.append("}")
         return lines
-    
+
     def lower_for(self, node: ForNode, names: Dict[int, str]) -> List[str]:
         """Lower a for node to C++ code."""
         lines = []
         iter_name = names.get(node.iterable_node_id, "iter")
         var_name = node.loop_var_name
-        
+
         lines.append(f"for (auto& {var_name} : {iter_name}) {{")
-        
+
         if node.body_graph:
             for sub_node in node.body_graph.nodes:
                 lines.extend(self._lower_subgraph_node(sub_node, names))
-        
+
         lines.append("}")
         return lines
-    
+
     def _lower_subgraph_node(self, node: Node, names: Dict[int, str]) -> List[str]:
         """Lower a node within a subgraph."""
         return [f"// Node {node.id}: {node.op_type.value}"]

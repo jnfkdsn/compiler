@@ -110,8 +110,12 @@ class SymbolicTensor:
     def T(self) -> "SymbolicTensor":
         return self.transpose()
 
-    def sum(self, axis: int | tuple[int, ...] | None = None, keepdims: bool = False) -> "SymbolicTensor":
-        out_shape, out_dtype, axes = infer_reduce(OpType.SUM, self.shape, self.dtype, axis=axis, keepdims=keepdims)
+    def sum(
+        self, axis: int | tuple[int, ...] | None = None, keepdims: bool = False
+    ) -> "SymbolicTensor":
+        out_shape, out_dtype, axes = infer_reduce(
+            OpType.SUM, self.shape, self.dtype, axis=axis, keepdims=keepdims
+        )
         n = self.graph._graph.add_node(
             op_type=OpType.SUM,
             name=f"sum_{self.node.id}",
@@ -122,8 +126,12 @@ class SymbolicTensor:
         )
         return SymbolicTensor(graph=self.graph, node=n)
 
-    def mean(self, axis: int | tuple[int, ...] | None = None, keepdims: bool = False) -> "SymbolicTensor":
-        out_shape, out_dtype, axes = infer_reduce(OpType.MEAN, self.shape, self.dtype, axis=axis, keepdims=keepdims)
+    def mean(
+        self, axis: int | tuple[int, ...] | None = None, keepdims: bool = False
+    ) -> "SymbolicTensor":
+        out_shape, out_dtype, axes = infer_reduce(
+            OpType.MEAN, self.shape, self.dtype, axis=axis, keepdims=keepdims
+        )
         n = self.graph._graph.add_node(
             op_type=OpType.MEAN,
             name=f"mean_{self.node.id}",
@@ -214,14 +222,20 @@ class StaticGraph:
         )
         return SymbolicTensor(graph=self, node=n)
 
-    def compile(self, *, use_hpc_template: bool = False, enable_memory_planner: bool = True) -> StaticCompiledGraph:
+    def compile(
+        self, *, use_hpc_template: bool = False, enable_memory_planner: bool = True
+    ) -> StaticCompiledGraph:
         if not self._graph.output_ids:
-            raise ValueError("StaticGraph has no output. Call `mark_as_output()` on a SymbolicTensor.")
+            raise ValueError(
+                "StaticGraph has no output. Call `mark_as_output()` on a SymbolicTensor."
+            )
         module = JITEngine(
             use_hpc_template=use_hpc_template,
             enable_memory_planner=enable_memory_planner,
         ).compile_graph(self._graph)
-        compiled = StaticCompiledGraph(module=module, input_names=[n.name for n in self._input_nodes])
+        compiled = StaticCompiledGraph(
+            module=module, input_names=[n.name for n in self._input_nodes]
+        )
         self._compiled = compiled
         return compiled
 

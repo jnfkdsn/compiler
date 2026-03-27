@@ -34,7 +34,9 @@ def _build_backward_state(
     else:
         loss_node = ordered[-1]
     if loss_node.shape != ():
-        raise ValueError(f"Backward builder currently expects scalar loss output, got shape {loss_node.shape}")
+        raise ValueError(
+            f"Backward builder currently expects scalar loss output, got shape {loss_node.shape}"
+        )
 
     graph = Graph()
     old_to_new: Dict[int, Node] = {}
@@ -72,7 +74,9 @@ def _build_backward_state(
             if prev is None:
                 grads[target.id] = grad
             else:
-                grads[target.id] = add_binary(graph, OpType.ADD, prev, grad, f"grad_acc_{target.id}")
+                grads[target.id] = add_binary(
+                    graph, OpType.ADD, prev, grad, f"grad_acc_{target.id}"
+                )
 
     return ordered, loss_node, graph, old_to_new, grads
 
@@ -167,7 +171,9 @@ class JITSGDUpdateKernel:
         return self.module.run(param, grad)
 
 
-def compile_sgd_update_kernel(shape: tuple[int, ...], lr: float, weight_decay: float = 0.0) -> JITSGDUpdateKernel:
+def compile_sgd_update_kernel(
+    shape: tuple[int, ...], lr: float, weight_decay: float = 0.0
+) -> JITSGDUpdateKernel:
     from ..frontend.tracer import TraceContext
     from ..tensor import Tensor
 
@@ -274,7 +280,7 @@ class CompiledTrainingStep:
         packed = np.asarray(self.grad_module.run(*inputs), dtype=np.float32).reshape(-1)
         grads: Dict[int, np.ndarray] = {}
         for entry in self.grad_layout:
-            view = packed[entry.start:entry.end]
+            view = packed[entry.start : entry.end]
             grads[entry.input_id] = view.reshape(entry.shape).copy()
         return loss, grads
 

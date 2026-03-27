@@ -19,24 +19,25 @@ from typing import Dict, List, Tuple
 from tensor_cpu.abi import AbiStatus
 from tensor_cpu.ir.graph import Graph, Node
 from tensor_cpu.ir.ops import OpType
+
 from .ir import (
-    Program,
-    Include,
-    Define,
-    StructDecl,
-    FunctionDecl,
-    Block,
-    VarDecl,
     Assign,
-    Identifier,
-    Literal,
     BinaryOp,
-    Index,
-    Return,
-    RawCode,
-    generate_cpp,
+    Block,
+    Define,
+    FunctionDecl,
     GraphLowering,
+    Identifier,
+    Include,
+    Index,
+    Literal,
+    Program,
+    RawCode,
+    Return,
+    StructDecl,
     TIRToCppConverter,
+    VarDecl,
+    generate_cpp,
 )
 
 
@@ -52,7 +53,9 @@ class GeneratedKernel:
 class LayeredCodegen:
     """Generate C++ kernels using the layered IR architecture."""
 
-    def __init__(self, graph: Graph, use_hpc_template: bool = False, enable_memory_planner: bool = True) -> None:
+    def __init__(
+        self, graph: Graph, use_hpc_template: bool = False, enable_memory_planner: bool = True
+    ) -> None:
         self.graph = graph
         self.use_hpc_template = use_hpc_template
         self.enable_memory_planner = enable_memory_planner
@@ -109,7 +112,14 @@ class LayeredCodegen:
             self._sym_str[node.id] = self._sym_strides_from(dims)
             return
 
-        if node.op_type in (OpType.ADD, OpType.SUB, OpType.MUL, OpType.DIV, OpType.RELU_GRAD, OpType.EQ):
+        if node.op_type in (
+            OpType.ADD,
+            OpType.SUB,
+            OpType.MUL,
+            OpType.DIV,
+            OpType.RELU_GRAD,
+            OpType.EQ,
+        ):
             lhs = self._sym.get(node.inputs[0], ())
             rhs = self._sym.get(node.inputs[1], ())
             dims = self._sym_broadcast(lhs, rhs)
@@ -237,7 +247,9 @@ class LayeredCodegen:
             workspace_slots=workspace_sym,
         )
 
-    def _build_full_program(self, ordered: List[Node], inputs: List[Node], output_node: Node) -> Program:
+    def _build_full_program(
+        self, ordered: List[Node], inputs: List[Node], output_node: Node
+    ) -> Program:
         max_rank = 8
         ctype = "double" if self._compute_dtype == "float64" else "float"
 
@@ -287,13 +299,17 @@ class LayeredCodegen:
             decls=[struct_decl, func],
         )
 
-    def _build_kernel_body(self, ordered: List[Node], inputs: List[Node], output_node: Node) -> List:
-        from .ir import ForLoop, TernaryOp, Call
+    def _build_kernel_body(
+        self, ordered: List[Node], inputs: List[Node], output_node: Node
+    ) -> List:
+        from .ir import Call, ForLoop, TernaryOp
 
         ctype = "double" if self._compute_dtype == "float64" else "float"
         stmts = []
 
-        input_count_check = f"if (num_inputs != {len(inputs)}LL) return {int(AbiStatus.INPUT_COUNT_MISMATCH)};"
+        input_count_check = (
+            f"if (num_inputs != {len(inputs)}LL) return {int(AbiStatus.INPUT_COUNT_MISMATCH)};"
+        )
         stmts.append(RawCode(input_count_check))
 
         for i, node in enumerate(inputs):
@@ -303,17 +319,17 @@ class LayeredCodegen:
             stmts.append(RawCode(guard))
 
         for i, node in enumerate(inputs):
-            stmts.append(VarDecl(
-                var_type=f"{ctype}*",
-                name=f"arg{i}",
-                init=RawCode(f"static_cast<{ctype}*>(inputs[{i}].data)"),
-            ))
+            stmts.append(
+                VarDecl(
+                    var_type=f"{ctype}*",
+                    name=f"arg{i}",
+                    init=RawCode(f"static_cast<{ctype}*>(inputs[{i}].data)"),
+                )
+            )
 
         for idx, node in enumerate(inputs):
             for d in range(node.rank):
-                stmts.append(RawCode(
-                    f"const long long in{idx}_d{d} = inputs[{idx}].shape[{d}];"
-                ))
+                stmts.append(RawCode(f"const long long in{idx}_d{d} = inputs[{idx}].shape[{d}];"))
 
         output_guards = [
             f"if (out_desc == nullptr) return {int(AbiStatus.OUT_DESC_NULL)};",
@@ -323,11 +339,13 @@ class LayeredCodegen:
         for guard in output_guards:
             stmts.append(RawCode(guard))
 
-        stmts.append(VarDecl(
-            var_type=f"{ctype}*",
-            name="out_ptr",
-            init=RawCode(f"static_cast<{ctype}*>(out_desc->data)"),
-        ))
+        stmts.append(
+            VarDecl(
+                var_type=f"{ctype}*",
+                name="out_ptr",
+                init=RawCode(f"static_cast<{ctype}*>(out_desc->data)"),
+            )
+        )
 
         names: Dict[int, str] = {}
         for idx, node in enumerate(inputs):
@@ -388,17 +406,19 @@ class LayeredCodegen:
 
         output_numel = self._numel_expr(output_node)
         output_name = names.get(output_node.id, "out_ptr")
-        stmts.append(RawCode(
-            f'if ({output_name} != out_ptr) {{\n'
-            f'    for (long long i = 0; i < {output_numel}; ++i) out_ptr[i] = {output_name}[i];\n'
-            f'}}'
-        ))
+        stmts.append(
+            RawCode(
+                f"if ({output_name} != out_ptr) {{\n"
+                f"    for (long long i = 0; i < {output_numel}; ++i) out_ptr[i] = {output_name}[i];\n"
+                f"}}"
+            )
+        )
         stmts.append(Return(Literal(0)))
 
         return stmts
 
     def _emit_node_stmts(self, node: Node, names: Dict[int, str]) -> List:
-        from .ir import ForLoop, TernaryOp, Call
+        from .ir import Call, ForLoop, TernaryOp
 
         ctype = self._cpp_type(node)
         zero = self._cpp_zero(node)
@@ -417,21 +437,35 @@ class LayeredCodegen:
             li = self._broadcast_index_expr(dst_node=node, src_node=lhs_node, linear_index_var="i")
             ri = self._broadcast_index_expr(dst_node=node, src_node=rhs_node, linear_index_var="i")
 
-            stmts.append(ForLoop(
-                init=VarDecl(var_type="long long", name="i", init=Literal(0)),
-                cond=BinaryOp(Identifier("i"), "<", Literal(total) if total.isdigit() else Identifier(total)),
-                update=Assign(Identifier("i"), BinaryOp(Identifier("i"), "+", Literal(1))),
-                body=Block(stmts=[
-                    Assign(
-                        Index(Identifier(dst), Identifier("i")),
-                        BinaryOp(
-                            Index(Identifier(lhs), Literal(li) if li.isdigit() else Identifier(li)),
-                            op,
-                            Index(Identifier(rhs), Literal(ri) if ri.isdigit() else Identifier(ri))
-                        )
-                    )
-                ])
-            ))
+            stmts.append(
+                ForLoop(
+                    init=VarDecl(var_type="long long", name="i", init=Literal(0)),
+                    cond=BinaryOp(
+                        Identifier("i"),
+                        "<",
+                        Literal(total) if total.isdigit() else Identifier(total),
+                    ),
+                    update=Assign(Identifier("i"), BinaryOp(Identifier("i"), "+", Literal(1))),
+                    body=Block(
+                        stmts=[
+                            Assign(
+                                Index(Identifier(dst), Identifier("i")),
+                                BinaryOp(
+                                    Index(
+                                        Identifier(lhs),
+                                        Literal(li) if li.isdigit() else Identifier(li),
+                                    ),
+                                    op,
+                                    Index(
+                                        Identifier(rhs),
+                                        Literal(ri) if ri.isdigit() else Identifier(ri),
+                                    ),
+                                ),
+                            )
+                        ]
+                    ),
+                )
+            )
 
         elif node.op_type == OpType.EQ:
             total = self._numel_expr(node)
@@ -446,75 +480,140 @@ class LayeredCodegen:
             li = self._broadcast_index_expr(dst_node=node, src_node=lhs_node, linear_index_var="i")
             ri = self._broadcast_index_expr(dst_node=node, src_node=rhs_node, linear_index_var="i")
 
-            stmts.append(ForLoop(
-                init=VarDecl(var_type="long long", name="i", init=Literal(0)),
-                cond=BinaryOp(Identifier("i"), "<", Literal(total) if total.isdigit() else Identifier(total)),
-                update=Assign(Identifier("i"), BinaryOp(Identifier("i"), "+", Literal(1))),
-                body=Block(stmts=[
-                    Assign(
-                        Index(Identifier(dst), Identifier("i")),
-                        TernaryOp(
-                            BinaryOp(
-                                Call("std::fabs", [BinaryOp(
-                                    Index(Identifier(lhs), Literal(li) if li.isdigit() else Identifier(li)),
-                                    "-",
-                                    Index(Identifier(rhs), Literal(ri) if ri.isdigit() else Identifier(ri))
-                                )]),
-                                "<=",
-                                Literal(eps)
-                            ),
-                            Literal(one),
-                            Literal(zero)
-                        )
-                    )
-                ])
-            ))
+            stmts.append(
+                ForLoop(
+                    init=VarDecl(var_type="long long", name="i", init=Literal(0)),
+                    cond=BinaryOp(
+                        Identifier("i"),
+                        "<",
+                        Literal(total) if total.isdigit() else Identifier(total),
+                    ),
+                    update=Assign(Identifier("i"), BinaryOp(Identifier("i"), "+", Literal(1))),
+                    body=Block(
+                        stmts=[
+                            Assign(
+                                Index(Identifier(dst), Identifier("i")),
+                                TernaryOp(
+                                    BinaryOp(
+                                        Call(
+                                            "std::fabs",
+                                            [
+                                                BinaryOp(
+                                                    Index(
+                                                        Identifier(lhs),
+                                                        (
+                                                            Literal(li)
+                                                            if li.isdigit()
+                                                            else Identifier(li)
+                                                        ),
+                                                    ),
+                                                    "-",
+                                                    Index(
+                                                        Identifier(rhs),
+                                                        (
+                                                            Literal(ri)
+                                                            if ri.isdigit()
+                                                            else Identifier(ri)
+                                                        ),
+                                                    ),
+                                                )
+                                            ],
+                                        ),
+                                        "<=",
+                                        Literal(eps),
+                                    ),
+                                    Literal(one),
+                                    Literal(zero),
+                                ),
+                            )
+                        ]
+                    ),
+                )
+            )
 
         elif node.op_type == OpType.RELU:
             total = self._numel_expr(node)
             src = names[node.inputs[0]]
             dst = names[node.id]
 
-            stmts.append(ForLoop(
-                init=VarDecl(var_type="long long", name="i", init=Literal(0)),
-                cond=BinaryOp(Identifier("i"), "<", Literal(total) if total.isdigit() else Identifier(total)),
-                update=Assign(Identifier("i"), BinaryOp(Identifier("i"), "+", Literal(1))),
-                body=Block(stmts=[
-                    VarDecl(var_type=ctype, name="v", init=Index(Identifier(src), Identifier("i"))),
-                    Assign(
-                        Index(Identifier(dst), Identifier("i")),
-                        TernaryOp(BinaryOp(Identifier("v"), ">", Literal(zero)), Identifier("v"), Literal(zero))
-                    )
-                ])
-            ))
+            stmts.append(
+                ForLoop(
+                    init=VarDecl(var_type="long long", name="i", init=Literal(0)),
+                    cond=BinaryOp(
+                        Identifier("i"),
+                        "<",
+                        Literal(total) if total.isdigit() else Identifier(total),
+                    ),
+                    update=Assign(Identifier("i"), BinaryOp(Identifier("i"), "+", Literal(1))),
+                    body=Block(
+                        stmts=[
+                            VarDecl(
+                                var_type=ctype,
+                                name="v",
+                                init=Index(Identifier(src), Identifier("i")),
+                            ),
+                            Assign(
+                                Index(Identifier(dst), Identifier("i")),
+                                TernaryOp(
+                                    BinaryOp(Identifier("v"), ">", Literal(zero)),
+                                    Identifier("v"),
+                                    Literal(zero),
+                                ),
+                            ),
+                        ]
+                    ),
+                )
+            )
 
         elif node.op_type == OpType.EXP:
             total = self._numel_expr(node)
             src = names[node.inputs[0]]
             dst = names[node.id]
 
-            stmts.append(ForLoop(
-                init=VarDecl(var_type="long long", name="i", init=Literal(0)),
-                cond=BinaryOp(Identifier("i"), "<", Literal(total) if total.isdigit() else Identifier(total)),
-                update=Assign(Identifier("i"), BinaryOp(Identifier("i"), "+", Literal(1))),
-                body=Block(stmts=[
-                    Assign(Index(Identifier(dst), Identifier("i")), Call("std::exp", [Index(Identifier(src), Identifier("i"))]))
-                ])
-            ))
+            stmts.append(
+                ForLoop(
+                    init=VarDecl(var_type="long long", name="i", init=Literal(0)),
+                    cond=BinaryOp(
+                        Identifier("i"),
+                        "<",
+                        Literal(total) if total.isdigit() else Identifier(total),
+                    ),
+                    update=Assign(Identifier("i"), BinaryOp(Identifier("i"), "+", Literal(1))),
+                    body=Block(
+                        stmts=[
+                            Assign(
+                                Index(Identifier(dst), Identifier("i")),
+                                Call("std::exp", [Index(Identifier(src), Identifier("i"))]),
+                            )
+                        ]
+                    ),
+                )
+            )
 
         elif node.op_type == OpType.LOG:
             total = self._numel_expr(node)
             src = names[node.inputs[0]]
             dst = names[node.id]
 
-            stmts.append(ForLoop(
-                init=VarDecl(var_type="long long", name="i", init=Literal(0)),
-                cond=BinaryOp(Identifier("i"), "<", Literal(total) if total.isdigit() else Identifier(total)),
-                update=Assign(Identifier("i"), BinaryOp(Identifier("i"), "+", Literal(1))),
-                body=Block(stmts=[
-                    Assign(Index(Identifier(dst), Identifier("i")), Call("std::log", [Index(Identifier(src), Identifier("i"))]))
-                ])
-            ))
+            stmts.append(
+                ForLoop(
+                    init=VarDecl(var_type="long long", name="i", init=Literal(0)),
+                    cond=BinaryOp(
+                        Identifier("i"),
+                        "<",
+                        Literal(total) if total.isdigit() else Identifier(total),
+                    ),
+                    update=Assign(Identifier("i"), BinaryOp(Identifier("i"), "+", Literal(1))),
+                    body=Block(
+                        stmts=[
+                            Assign(
+                                Index(Identifier(dst), Identifier("i")),
+                                Call("std::log", [Index(Identifier(src), Identifier("i"))]),
+                            )
+                        ]
+                    ),
+                )
+            )
 
         elif node.op_type == OpType.SIGMOID:
             total = self._numel_expr(node)
@@ -522,18 +621,38 @@ class LayeredCodegen:
             dst = names[node.id]
             one = "1.0" if node.dtype == "float64" else "1.0f"
 
-            stmts.append(ForLoop(
-                init=VarDecl(var_type="long long", name="i", init=Literal(0)),
-                cond=BinaryOp(Identifier("i"), "<", Literal(total) if total.isdigit() else Identifier(total)),
-                update=Assign(Identifier("i"), BinaryOp(Identifier("i"), "+", Literal(1))),
-                body=Block(stmts=[
-                    VarDecl(var_type=ctype, name="v", init=Index(Identifier(src), Identifier("i"))),
-                    Assign(
-                        Index(Identifier(dst), Identifier("i")),
-                        BinaryOp(Literal(one), "/", BinaryOp(Literal(one), "+", Call("std::exp", [UnaryOp("-", Identifier("v"))])))
-                    )
-                ])
-            ))
+            stmts.append(
+                ForLoop(
+                    init=VarDecl(var_type="long long", name="i", init=Literal(0)),
+                    cond=BinaryOp(
+                        Identifier("i"),
+                        "<",
+                        Literal(total) if total.isdigit() else Identifier(total),
+                    ),
+                    update=Assign(Identifier("i"), BinaryOp(Identifier("i"), "+", Literal(1))),
+                    body=Block(
+                        stmts=[
+                            VarDecl(
+                                var_type=ctype,
+                                name="v",
+                                init=Index(Identifier(src), Identifier("i")),
+                            ),
+                            Assign(
+                                Index(Identifier(dst), Identifier("i")),
+                                BinaryOp(
+                                    Literal(one),
+                                    "/",
+                                    BinaryOp(
+                                        Literal(one),
+                                        "+",
+                                        Call("std::exp", [UnaryOp("-", Identifier("v"))]),
+                                    ),
+                                ),
+                            ),
+                        ]
+                    ),
+                )
+            )
 
         elif node.op_type == OpType.MATMUL:
             stmts.extend(self._emit_matmul_stmts(node, names))
@@ -554,14 +673,27 @@ class LayeredCodegen:
             src_node = self.graph.get_node(node.inputs[0])
             si = self._broadcast_index_expr(dst_node=node, src_node=src_node, linear_index_var="i")
 
-            stmts.append(ForLoop(
-                init=VarDecl(var_type="long long", name="i", init=Literal(0)),
-                cond=BinaryOp(Identifier("i"), "<", Literal(total) if total.isdigit() else Identifier(total)),
-                update=Assign(Identifier("i"), BinaryOp(Identifier("i"), "+", Literal(1))),
-                body=Block(stmts=[
-                    Assign(Index(Identifier(dst), Identifier("i")), Index(Identifier(src), Literal(si) if si.isdigit() else Identifier(si)))
-                ])
-            ))
+            stmts.append(
+                ForLoop(
+                    init=VarDecl(var_type="long long", name="i", init=Literal(0)),
+                    cond=BinaryOp(
+                        Identifier("i"),
+                        "<",
+                        Literal(total) if total.isdigit() else Identifier(total),
+                    ),
+                    update=Assign(Identifier("i"), BinaryOp(Identifier("i"), "+", Literal(1))),
+                    body=Block(
+                        stmts=[
+                            Assign(
+                                Index(Identifier(dst), Identifier("i")),
+                                Index(
+                                    Identifier(src), Literal(si) if si.isdigit() else Identifier(si)
+                                ),
+                            )
+                        ]
+                    ),
+                )
+            )
 
         return stmts
 
@@ -584,45 +716,82 @@ class LayeredCodegen:
         ctype = self._cpp_type(node)
         zero = self._cpp_zero(node)
 
-        inner_body = Block(stmts=[
-            VarDecl(var_type=ctype, name="acc", init=Literal(zero)),
-            ForLoop(
-                init=VarDecl(var_type="long long", name="kk", init=Literal(0)),
-                cond=BinaryOp(Identifier("kk"), "<", Literal(K) if K.isdigit() else Identifier(K)),
-                update=Assign(Identifier("kk"), BinaryOp(Identifier("kk"), "+", Literal(1))),
-                body=Block(stmts=[
-                    Assign(
-                        Identifier("acc"),
-                        BinaryOp(
-                            Identifier("acc"),
-                            "+",
-                            BinaryOp(
-                                Index(Identifier(a), BinaryOp(BinaryOp(Identifier("i"), "*", Literal(K) if K.isdigit() else Identifier(K)), "+", Identifier("kk"))),
-                                "*",
-                                Index(Identifier(b), BinaryOp(BinaryOp(Identifier("kk"), "*", Literal(N) if N.isdigit() else Identifier(N)), "+", Identifier("j")))
+        inner_body = Block(
+            stmts=[
+                VarDecl(var_type=ctype, name="acc", init=Literal(zero)),
+                ForLoop(
+                    init=VarDecl(var_type="long long", name="kk", init=Literal(0)),
+                    cond=BinaryOp(
+                        Identifier("kk"), "<", Literal(K) if K.isdigit() else Identifier(K)
+                    ),
+                    update=Assign(Identifier("kk"), BinaryOp(Identifier("kk"), "+", Literal(1))),
+                    body=Block(
+                        stmts=[
+                            Assign(
+                                Identifier("acc"),
+                                BinaryOp(
+                                    Identifier("acc"),
+                                    "+",
+                                    BinaryOp(
+                                        Index(
+                                            Identifier(a),
+                                            BinaryOp(
+                                                BinaryOp(
+                                                    Identifier("i"),
+                                                    "*",
+                                                    Literal(K) if K.isdigit() else Identifier(K),
+                                                ),
+                                                "+",
+                                                Identifier("kk"),
+                                            ),
+                                        ),
+                                        "*",
+                                        Index(
+                                            Identifier(b),
+                                            BinaryOp(
+                                                BinaryOp(
+                                                    Identifier("kk"),
+                                                    "*",
+                                                    Literal(N) if N.isdigit() else Identifier(N),
+                                                ),
+                                                "+",
+                                                Identifier("j"),
+                                            ),
+                                        ),
+                                    ),
+                                ),
                             )
-                        )
-                    )
-                ])
-            ),
-            Assign(
-                Index(Identifier(c), BinaryOp(BinaryOp(Identifier("i"), "*", Literal(N) if N.isdigit() else Identifier(N)), "+", Identifier("j"))),
-                Identifier("acc")
-            )
-        ])
+                        ]
+                    ),
+                ),
+                Assign(
+                    Index(
+                        Identifier(c),
+                        BinaryOp(
+                            BinaryOp(
+                                Identifier("i"), "*", Literal(N) if N.isdigit() else Identifier(N)
+                            ),
+                            "+",
+                            Identifier("j"),
+                        ),
+                    ),
+                    Identifier("acc"),
+                ),
+            ]
+        )
 
         j_loop = ForLoop(
             init=VarDecl(var_type="long long", name="j", init=Literal(0)),
             cond=BinaryOp(Identifier("j"), "<", Literal(N) if N.isdigit() else Identifier(N)),
             update=Assign(Identifier("j"), BinaryOp(Identifier("j"), "+", Literal(1))),
-            body=inner_body
+            body=inner_body,
         )
 
         i_loop = ForLoop(
             init=VarDecl(var_type="long long", name="i", init=Literal(0)),
             cond=BinaryOp(Identifier("i"), "<", Literal(M) if M.isdigit() else Identifier(M)),
             update=Assign(Identifier("i"), BinaryOp(Identifier("i"), "+", Literal(1))),
-            body=Block(stmts=[j_loop])
+            body=Block(stmts=[j_loop]),
         )
 
         return [i_loop]
@@ -656,33 +825,77 @@ class LayeredCodegen:
                 init=VarDecl(var_type="long long", name="kk", init=Literal(0)),
                 cond=BinaryOp(Identifier("kk"), "<", Literal(k) if k.isdigit() else Identifier(k)),
                 update=Assign(Identifier("kk"), BinaryOp(Identifier("kk"), "+", Literal(1))),
-                body=Block(stmts=[
-                    Assign(
-                        Identifier("acc"),
-                        BinaryOp(
+                body=Block(
+                    stmts=[
+                        Assign(
                             Identifier("acc"),
-                            "+",
                             BinaryOp(
-                                Index(Identifier(a), BinaryOp(BinaryOp(Identifier("i"), "*", Literal(k) if k.isdigit() else Identifier(k)), "+", Identifier("kk"))),
-                                "*",
-                                Index(Identifier(b), BinaryOp(BinaryOp(Identifier("kk"), "*", Literal(n) if n.isdigit() else Identifier(n)), "+", Identifier("j")))
-                            )
+                                Identifier("acc"),
+                                "+",
+                                BinaryOp(
+                                    Index(
+                                        Identifier(a),
+                                        BinaryOp(
+                                            BinaryOp(
+                                                Identifier("i"),
+                                                "*",
+                                                Literal(k) if k.isdigit() else Identifier(k),
+                                            ),
+                                            "+",
+                                            Identifier("kk"),
+                                        ),
+                                    ),
+                                    "*",
+                                    Index(
+                                        Identifier(b),
+                                        BinaryOp(
+                                            BinaryOp(
+                                                Identifier("kk"),
+                                                "*",
+                                                Literal(n) if n.isdigit() else Identifier(n),
+                                            ),
+                                            "+",
+                                            Identifier("j"),
+                                        ),
+                                    ),
+                                ),
+                            ),
                         )
-                    )
-                ])
+                    ]
+                ),
             ),
-            VarDecl(var_type=ctype, name="v", init=BinaryOp(Identifier("acc"), "+", Index(Identifier(bias), Identifier("j")))),
+            VarDecl(
+                var_type=ctype,
+                name="v",
+                init=BinaryOp(Identifier("acc"), "+", Index(Identifier(bias), Identifier("j"))),
+            ),
         ]
 
         if with_relu:
             inner_stmts.append(
-                Assign(Identifier("v"), TernaryOp(BinaryOp(Identifier("v"), ">", Literal(zero)), Identifier("v"), Literal(zero)))
+                Assign(
+                    Identifier("v"),
+                    TernaryOp(
+                        BinaryOp(Identifier("v"), ">", Literal(zero)),
+                        Identifier("v"),
+                        Literal(zero),
+                    ),
+                )
             )
 
         inner_stmts.append(
             Assign(
-                Index(Identifier(out), BinaryOp(BinaryOp(Identifier("i"), "*", Literal(n) if n.isdigit() else Identifier(n)), "+", Identifier("j"))),
-                Identifier("v")
+                Index(
+                    Identifier(out),
+                    BinaryOp(
+                        BinaryOp(
+                            Identifier("i"), "*", Literal(n) if n.isdigit() else Identifier(n)
+                        ),
+                        "+",
+                        Identifier("j"),
+                    ),
+                ),
+                Identifier("v"),
             )
         )
 
@@ -690,14 +903,14 @@ class LayeredCodegen:
             init=VarDecl(var_type="long long", name="j", init=Literal(0)),
             cond=BinaryOp(Identifier("j"), "<", Literal(n) if n.isdigit() else Identifier(n)),
             update=Assign(Identifier("j"), BinaryOp(Identifier("j"), "+", Literal(1))),
-            body=Block(stmts=inner_stmts)
+            body=Block(stmts=inner_stmts),
         )
 
         i_loop = ForLoop(
             init=VarDecl(var_type="long long", name="i", init=Literal(0)),
             cond=BinaryOp(Identifier("i"), "<", Literal(m) if m.isdigit() else Identifier(m)),
             update=Assign(Identifier("i"), BinaryOp(Identifier("i"), "+", Literal(1))),
-            body=Block(stmts=[j_loop])
+            body=Block(stmts=[j_loop]),
         )
 
         return [i_loop]
@@ -712,12 +925,25 @@ class LayeredCodegen:
         total = self._numel_expr(node)
 
         if rank <= 1:
-            return [ForLoop(
-                init=VarDecl(var_type="long long", name="i", init=Literal(0)),
-                cond=BinaryOp(Identifier("i"), "<", Literal(total) if total.isdigit() else Identifier(total)),
-                update=Assign(Identifier("i"), BinaryOp(Identifier("i"), "+", Literal(1))),
-                body=Block(stmts=[Assign(Index(Identifier(dst), Identifier("i")), Index(Identifier(src), Identifier("i")))])
-            )]
+            return [
+                ForLoop(
+                    init=VarDecl(var_type="long long", name="i", init=Literal(0)),
+                    cond=BinaryOp(
+                        Identifier("i"),
+                        "<",
+                        Literal(total) if total.isdigit() else Identifier(total),
+                    ),
+                    update=Assign(Identifier("i"), BinaryOp(Identifier("i"), "+", Literal(1))),
+                    body=Block(
+                        stmts=[
+                            Assign(
+                                Index(Identifier(dst), Identifier("i")),
+                                Index(Identifier(src), Identifier("i")),
+                            )
+                        ]
+                    ),
+                )
+            ]
 
         dst_strides = self._sym_str.get(node.id, ())
         src_strides = self._sym_str.get(src_node.id, ())
@@ -732,21 +958,28 @@ class LayeredCodegen:
             dst_stride = dst_strides[d]
             src_stride = src_strides[src_dim_idx]
 
-            body_stmts.append(RawCode(
-                f"long long c{d} = rem / ({dst_stride}); rem %= ({dst_stride});"
-            ))
-            body_stmts.append(RawCode(
-                f"src_idx += c{d} * ({src_stride});"
-            ))
+            body_stmts.append(
+                RawCode(f"long long c{d} = rem / ({dst_stride}); rem %= ({dst_stride});")
+            )
+            body_stmts.append(RawCode(f"src_idx += c{d} * ({src_stride});"))
 
-        body_stmts.append(Assign(Index(Identifier(dst), Identifier("i")), Index(Identifier(src), Identifier("src_idx"))))
+        body_stmts.append(
+            Assign(
+                Index(Identifier(dst), Identifier("i")),
+                Index(Identifier(src), Identifier("src_idx")),
+            )
+        )
 
-        return [ForLoop(
-            init=VarDecl(var_type="long long", name="i", init=Literal(0)),
-            cond=BinaryOp(Identifier("i"), "<", Literal(total) if total.isdigit() else Identifier(total)),
-            update=Assign(Identifier("i"), BinaryOp(Identifier("i"), "+", Literal(1))),
-            body=Block(stmts=body_stmts)
-        )]
+        return [
+            ForLoop(
+                init=VarDecl(var_type="long long", name="i", init=Literal(0)),
+                cond=BinaryOp(
+                    Identifier("i"), "<", Literal(total) if total.isdigit() else Identifier(total)
+                ),
+                update=Assign(Identifier("i"), BinaryOp(Identifier("i"), "+", Literal(1))),
+                body=Block(stmts=body_stmts),
+            )
+        ]
 
     def _emit_reduce_stmts(self, node: Node, names: Dict[int, str]) -> List:
         from .ir import ForLoop
@@ -757,7 +990,9 @@ class LayeredCodegen:
         total = self._numel_expr(src_node)
         out_total = self._numel_expr(node)
         axes = tuple(int(a) for a in node.attrs.get("axis", ()))
-        dst_idx = self._reduce_dst_index_expr(src_node=src_node, dst_node=node, axes=axes, idx_var="i")
+        dst_idx = self._reduce_dst_index_expr(
+            src_node=src_node, dst_node=node, axes=axes, idx_var="i"
+        )
 
         ctype = self._cpp_type(node)
         zero = self._cpp_zero(node)
@@ -769,38 +1004,74 @@ class LayeredCodegen:
         stmts = [
             ForLoop(
                 init=VarDecl(var_type="long long", name="o", init=Literal(0)),
-                cond=BinaryOp(Identifier("o"), "<", Literal(out_total) if out_total.isdigit() else Identifier(out_total)),
+                cond=BinaryOp(
+                    Identifier("o"),
+                    "<",
+                    Literal(out_total) if out_total.isdigit() else Identifier(out_total),
+                ),
                 update=Assign(Identifier("o"), BinaryOp(Identifier("o"), "+", Literal(1))),
-                body=Block(stmts=[Assign(Index(Identifier(dst), Identifier("o")), Literal(init_val))])
+                body=Block(
+                    stmts=[Assign(Index(Identifier(dst), Identifier("o")), Literal(init_val))]
+                ),
             ),
         ]
 
         if node.op_type == OpType.MAX:
-            stmts.append(ForLoop(
-                init=VarDecl(var_type="long long", name="i", init=Literal(0)),
-                cond=BinaryOp(Identifier("i"), "<", Literal(total) if total.isdigit() else Identifier(total)),
-                update=Assign(Identifier("i"), BinaryOp(Identifier("i"), "+", Literal(1))),
-                body=Block(stmts=[
-                    VarDecl(var_type="int", name="di", init=Literal(dst_idx) if dst_idx.isdigit() else Identifier(dst_idx)),
-                    RawCode(f"if ({src}[i] > {dst}[di]) {dst}[di] = {src}[i];")
-                ])
-            ))
+            stmts.append(
+                ForLoop(
+                    init=VarDecl(var_type="long long", name="i", init=Literal(0)),
+                    cond=BinaryOp(
+                        Identifier("i"),
+                        "<",
+                        Literal(total) if total.isdigit() else Identifier(total),
+                    ),
+                    update=Assign(Identifier("i"), BinaryOp(Identifier("i"), "+", Literal(1))),
+                    body=Block(
+                        stmts=[
+                            VarDecl(
+                                var_type="int",
+                                name="di",
+                                init=Literal(dst_idx) if dst_idx.isdigit() else Identifier(dst_idx),
+                            ),
+                            RawCode(f"if ({src}[i] > {dst}[di]) {dst}[di] = {src}[i];"),
+                        ]
+                    ),
+                )
+            )
         else:
-            stmts.append(ForLoop(
-                init=VarDecl(var_type="long long", name="i", init=Literal(0)),
-                cond=BinaryOp(Identifier("i"), "<", Literal(total) if total.isdigit() else Identifier(total)),
-                update=Assign(Identifier("i"), BinaryOp(Identifier("i"), "+", Literal(1))),
-                body=Block(stmts=[
-                    Assign(
-                        Index(Identifier(dst), Literal(dst_idx) if dst_idx.isdigit() else Identifier(dst_idx)),
-                        BinaryOp(
-                            Index(Identifier(dst), Literal(dst_idx) if dst_idx.isdigit() else Identifier(dst_idx)),
-                            "+",
-                            Index(Identifier(src), Identifier("i"))
-                        )
-                    )
-                ])
-            ))
+            stmts.append(
+                ForLoop(
+                    init=VarDecl(var_type="long long", name="i", init=Literal(0)),
+                    cond=BinaryOp(
+                        Identifier("i"),
+                        "<",
+                        Literal(total) if total.isdigit() else Identifier(total),
+                    ),
+                    update=Assign(Identifier("i"), BinaryOp(Identifier("i"), "+", Literal(1))),
+                    body=Block(
+                        stmts=[
+                            Assign(
+                                Index(
+                                    Identifier(dst),
+                                    Literal(dst_idx) if dst_idx.isdigit() else Identifier(dst_idx),
+                                ),
+                                BinaryOp(
+                                    Index(
+                                        Identifier(dst),
+                                        (
+                                            Literal(dst_idx)
+                                            if dst_idx.isdigit()
+                                            else Identifier(dst_idx)
+                                        ),
+                                    ),
+                                    "+",
+                                    Index(Identifier(src), Identifier("i")),
+                                ),
+                            )
+                        ]
+                    ),
+                )
+            )
 
         if node.op_type == OpType.MEAN:
             src_sym = self._sym.get(src_node.id, ())
@@ -811,21 +1082,36 @@ class LayeredCodegen:
                 else:
                     reduce_size_expr = " * ".join(f"({d})" for d in reduce_parts)
 
-                stmts.append(ForLoop(
-                    init=VarDecl(var_type="long long", name="o", init=Literal(0)),
-                    cond=BinaryOp(Identifier("o"), "<", Literal(out_total) if out_total.isdigit() else Identifier(out_total)),
-                    update=Assign(Identifier("o"), BinaryOp(Identifier("o"), "+", Literal(1))),
-                    body=Block(stmts=[
-                        Assign(
-                            Index(Identifier(dst), Identifier("o")),
-                            BinaryOp(
-                                Index(Identifier(dst), Identifier("o")),
-                                "/",
-                                Cast(ctype, Literal(reduce_size_expr) if reduce_size_expr.isdigit() else Identifier(reduce_size_expr))
-                            )
-                        )
-                    ])
-                ))
+                stmts.append(
+                    ForLoop(
+                        init=VarDecl(var_type="long long", name="o", init=Literal(0)),
+                        cond=BinaryOp(
+                            Identifier("o"),
+                            "<",
+                            Literal(out_total) if out_total.isdigit() else Identifier(out_total),
+                        ),
+                        update=Assign(Identifier("o"), BinaryOp(Identifier("o"), "+", Literal(1))),
+                        body=Block(
+                            stmts=[
+                                Assign(
+                                    Index(Identifier(dst), Identifier("o")),
+                                    BinaryOp(
+                                        Index(Identifier(dst), Identifier("o")),
+                                        "/",
+                                        Cast(
+                                            ctype,
+                                            (
+                                                Literal(reduce_size_expr)
+                                                if reduce_size_expr.isdigit()
+                                                else Identifier(reduce_size_expr)
+                                            ),
+                                        ),
+                                    ),
+                                )
+                            ]
+                        ),
+                    )
+                )
 
         return stmts
 
@@ -854,7 +1140,9 @@ class LayeredCodegen:
             return f"((long long)({dims[0]}))"
         return "(" + " * ".join(f"(long long)({d})" for d in dims) + ")"
 
-    def _broadcast_index_expr(self, *, dst_node: Node, src_node: Node, linear_index_var: str) -> str:
+    def _broadcast_index_expr(
+        self, *, dst_node: Node, src_node: Node, linear_index_var: str
+    ) -> str:
         src_sym = self._sym.get(src_node.id, ())
         dst_sym = self._sym.get(dst_node.id, ())
 
@@ -871,7 +1159,9 @@ class LayeredCodegen:
             dst_axes = [i for i, d in enumerate(dst_sym) if d != "1"]
             terms: List[str] = []
             for src_axis, dst_axis in enumerate(dst_axes):
-                coord_expr = f"(({linear_index_var} / ({dst_strides[dst_axis]})) % ({dst_sym[dst_axis]}))"
+                coord_expr = (
+                    f"(({linear_index_var} / ({dst_strides[dst_axis]})) % ({dst_sym[dst_axis]}))"
+                )
                 src_stride = src_strides[src_axis]
                 if src_stride == "1":
                     terms.append(coord_expr)
@@ -910,7 +1200,9 @@ class LayeredCodegen:
             return "0"
         return " + ".join(terms)
 
-    def _reduce_dst_index_expr(self, *, src_node: Node, dst_node: Node, axes: Tuple[int, ...], idx_var: str) -> str:
+    def _reduce_dst_index_expr(
+        self, *, src_node: Node, dst_node: Node, axes: Tuple[int, ...], idx_var: str
+    ) -> str:
         dst_sym = self._sym.get(dst_node.id, ())
         if not dst_sym:
             return "0"
@@ -938,7 +1230,9 @@ class LayeredCodegen:
             return "0"
         return " + ".join(terms)
 
-    def _compute_workspace_slots(self, ordered: List[Node], inputs: List[Node]) -> Tuple[Tuple[str, Tuple[str, ...]], ...]:
+    def _compute_workspace_slots(
+        self, ordered: List[Node], inputs: List[Node]
+    ) -> Tuple[Tuple[str, Tuple[str, ...]], ...]:
         names: Dict[int, str] = {}
         for idx, node in enumerate(inputs):
             names[node.id] = f"arg{idx}"

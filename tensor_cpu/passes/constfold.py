@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import math
 from typing import List
 
-import math
 import numpy as np
 
 from ..ir.graph import Graph
@@ -59,7 +59,13 @@ def constant_fold(graph: Graph) -> int:
             continue
 
         # insert a new const node and replace uses
-        new = graph.add_node(op_type=OpType.CONST, name=f"const_fold_{node.id}", shape=(), dtype=node.dtype, attrs={"value": float(out)})
+        new = graph.add_node(
+            op_type=OpType.CONST,
+            name=f"const_fold_{node.id}",
+            shape=(),
+            dtype=node.dtype,
+            attrs={"value": float(out)},
+        )
         graph.replace_all_uses(node.id, new.id)
         folded.append(node.id)
 

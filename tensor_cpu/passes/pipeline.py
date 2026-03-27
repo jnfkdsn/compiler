@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from .dce import dead_code_elimination
-from .fusion import fuse_matmul_bias_relu
 from .constfold import constant_fold
 from .cse import cse
+from .dce import dead_code_elimination
+from .fusion import fuse_matmul_bias_relu
 
 
 def optimize_graph(graph) -> dict:

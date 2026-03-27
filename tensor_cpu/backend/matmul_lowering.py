@@ -52,7 +52,11 @@ class MatmulLoweringMixin:
                                         init="long long kk = 0",
                                         cond=f"kk < ({k_dim})",
                                         inc="++kk",
-                                        body=[CppLine(f"acc += {a}[i * ({k_dim}) + kk] * {b}[kk * ({n_dim}) + j];")],
+                                        body=[
+                                            CppLine(
+                                                f"acc += {a}[i * ({k_dim}) + kk] * {b}[kk * ({n_dim}) + j];"
+                                            )
+                                        ],
                                     ),
                                     CppLine(f"{c}[i * ({n_dim}) + j] = acc;"),
                                 ],
@@ -105,7 +109,11 @@ class MatmulLoweringMixin:
                                 init="long long kk = 0",
                                 cond=f"kk < ({k_dim})",
                                 inc="++kk",
-                                body=[CppLine(f"acc += {a}[a_off + i * ({k_dim}) + kk] * {b}[b_off + kk * ({n_dim}) + j];")],
+                                body=[
+                                    CppLine(
+                                        f"acc += {a}[a_off + i * ({k_dim}) + kk] * {b}[b_off + kk * ({n_dim}) + j];"
+                                    )
+                                ],
                             ),
                             CppLine(f"{c}[c_off + i * ({n_dim}) + j] = acc;"),
                         ],
@@ -114,7 +122,14 @@ class MatmulLoweringMixin:
             )
         )
         return self._emit_structured(
-            [CppFor(init="long long batch = 0", cond=f"batch < ({batch_size})", inc="++batch", body=body)]
+            [
+                CppFor(
+                    init="long long batch = 0",
+                    cond=f"batch < ({batch_size})",
+                    inc="++batch",
+                    body=body,
+                )
+            ]
         )
 
     def _emit_fused_matmul(self, node: Node, names: Dict[int, str]) -> List[str]:

@@ -43,13 +43,25 @@ def decode_abi_status(status: int) -> str:
 
     if status >= AbiStatus.INPUT_DATA_NULL_BASE and status < AbiStatus.INPUT_NUMEL_MISMATCH_BASE:
         return "input_data_null"
-    if status >= AbiStatus.INPUT_NUMEL_MISMATCH_BASE and status < AbiStatus.INPUT_RANK_MISMATCH_BASE:
+    if (
+        status >= AbiStatus.INPUT_NUMEL_MISMATCH_BASE
+        and status < AbiStatus.INPUT_RANK_MISMATCH_BASE
+    ):
         return "input_numel_mismatch"
-    if status >= AbiStatus.INPUT_RANK_MISMATCH_BASE and status < AbiStatus.INPUT_SHAPE_MISMATCH_BASE:
+    if (
+        status >= AbiStatus.INPUT_RANK_MISMATCH_BASE
+        and status < AbiStatus.INPUT_SHAPE_MISMATCH_BASE
+    ):
         return "input_rank_mismatch"
-    if status >= AbiStatus.INPUT_SHAPE_MISMATCH_BASE and status < AbiStatus.INPUT_STRIDE_MISMATCH_BASE:
+    if (
+        status >= AbiStatus.INPUT_SHAPE_MISMATCH_BASE
+        and status < AbiStatus.INPUT_STRIDE_MISMATCH_BASE
+    ):
         return "input_shape_mismatch"
-    if status >= AbiStatus.INPUT_STRIDE_MISMATCH_BASE and status < AbiStatus.INPUT_STRIDE_MISMATCH_BASE + 100:
+    if (
+        status >= AbiStatus.INPUT_STRIDE_MISMATCH_BASE
+        and status < AbiStatus.INPUT_STRIDE_MISMATCH_BASE + 100
+    ):
         return "input_stride_mismatch"
     return "unknown_abi_status"
 

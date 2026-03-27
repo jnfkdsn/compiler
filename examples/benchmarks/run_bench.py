@@ -26,7 +26,6 @@ sys.path.insert(0, ".")
 
 from tensor_cpu import JITEngine, Tensor, TraceContext
 
-
 DEFAULT_ATOL = 1e-4
 DEFAULT_RTOL = 1e-4
 
@@ -526,8 +525,12 @@ def _base_suite(quick: bool) -> list[CaseSpec]:
     sizes = _profile_sizes(quick)
     warmup = sizes["warmup"]
     repeats = sizes["repeats"]
-    default_engine = EngineConfig(use_hpc_template=True, enable_memory_planner=True, passes=("pipeline",))
-    elementwise_engine = EngineConfig(use_hpc_template=False, enable_memory_planner=True, passes=("pipeline",))
+    default_engine = EngineConfig(
+        use_hpc_template=True, enable_memory_planner=True, passes=("pipeline",)
+    )
+    elementwise_engine = EngineConfig(
+        use_hpc_template=False, enable_memory_planner=True, passes=("pipeline",)
+    )
 
     cases: list[CaseSpec] = []
     for m, k, n in sizes["matmuls"]:
@@ -607,7 +610,9 @@ def _experiment_suite(quick: bool) -> tuple[list[CaseSpec], list[ExperimentSpec]
             shape=matmul_shape,
             warmup=warmup,
             repeats=repeats,
-            engine=EngineConfig(use_hpc_template=False, enable_memory_planner=True, passes=("pipeline",)),
+            engine=EngineConfig(
+                use_hpc_template=False, enable_memory_planner=True, passes=("pipeline",)
+            ),
         ),
         _build_matmul_case(
             key=f"experiment_matmul_hpc_on_{matmul_shape[0]}x{matmul_shape[1]}x{matmul_shape[2]}",
@@ -615,7 +620,9 @@ def _experiment_suite(quick: bool) -> tuple[list[CaseSpec], list[ExperimentSpec]
             shape=matmul_shape,
             warmup=warmup,
             repeats=repeats,
-            engine=EngineConfig(use_hpc_template=True, enable_memory_planner=True, passes=("pipeline",)),
+            engine=EngineConfig(
+                use_hpc_template=True, enable_memory_planner=True, passes=("pipeline",)
+            ),
         ),
         _build_chain_case(
             key=f"experiment_chain_passes_off_d{chain_depth}_{chain_shape[0]}x{chain_shape[1]}",
@@ -633,7 +640,9 @@ def _experiment_suite(quick: bool) -> tuple[list[CaseSpec], list[ExperimentSpec]
             depth=chain_depth,
             warmup=warmup,
             repeats=repeats,
-            engine=EngineConfig(use_hpc_template=False, enable_memory_planner=True, passes=("pipeline",)),
+            engine=EngineConfig(
+                use_hpc_template=False, enable_memory_planner=True, passes=("pipeline",)
+            ),
         ),
         _build_chain_case(
             key=f"experiment_chain_mem_off_d{chain_depth}_{chain_shape[0]}x{chain_shape[1]}",
@@ -642,7 +651,9 @@ def _experiment_suite(quick: bool) -> tuple[list[CaseSpec], list[ExperimentSpec]
             depth=chain_depth,
             warmup=warmup,
             repeats=repeats,
-            engine=EngineConfig(use_hpc_template=False, enable_memory_planner=False, passes=("pipeline",)),
+            engine=EngineConfig(
+                use_hpc_template=False, enable_memory_planner=False, passes=("pipeline",)
+            ),
         ),
         _build_chain_case(
             key=f"experiment_chain_mem_on_d{chain_depth}_{chain_shape[0]}x{chain_shape[1]}",
@@ -651,7 +662,9 @@ def _experiment_suite(quick: bool) -> tuple[list[CaseSpec], list[ExperimentSpec]
             depth=chain_depth,
             warmup=warmup,
             repeats=repeats,
-            engine=EngineConfig(use_hpc_template=False, enable_memory_planner=True, passes=("pipeline",)),
+            engine=EngineConfig(
+                use_hpc_template=False, enable_memory_planner=True, passes=("pipeline",)
+            ),
         ),
     ]
 
@@ -708,7 +721,11 @@ def _build_experiment_summaries(
         baseline_metric = float(baseline[experiment.metric])
         candidate_metric = float(candidate[experiment.metric])
         speedup = baseline_metric / candidate_metric if candidate_metric > 0 else float("inf")
-        delta_pct = ((candidate_metric - baseline_metric) / baseline_metric * 100.0) if baseline_metric > 0 else 0.0
+        delta_pct = (
+            ((candidate_metric - baseline_metric) / baseline_metric * 100.0)
+            if baseline_metric > 0
+            else 0.0
+        )
         summaries[experiment.name] = {
             "metric": experiment.metric,
             "baseline_key": experiment.baseline_key,
@@ -721,7 +738,9 @@ def _build_experiment_summaries(
     return summaries
 
 
-def run_all_benchmarks(quick: bool, include_experiments: bool) -> tuple[Dict[str, Any], Dict[str, Any]]:
+def run_all_benchmarks(
+    quick: bool, include_experiments: bool
+) -> tuple[Dict[str, Any], Dict[str, Any]]:
     results: Dict[str, Any] = {}
     print("=" * 60)
     print("Tensor CPU AI Compiler Performance Benchmarks")
@@ -788,7 +807,9 @@ def _unwrap_results(payload: Dict[str, Any]) -> Dict[str, Any]:
     return payload
 
 
-def _comparison_policy(payload: Dict[str, Any], threshold_override: float | None) -> Tuple[str, float]:
+def _comparison_policy(
+    payload: Dict[str, Any], threshold_override: float | None
+) -> Tuple[str, float]:
     comparison = payload.get("comparison", {})
     metric = comparison.get("metric", "median_ms")
     threshold = threshold_override
@@ -834,7 +855,9 @@ def main() -> int:
         type=float,
         help="Regression threshold override (for example: 0.10 = 10%%)",
     )
-    parser.add_argument("--quick", action="store_true", help="Run a reduced benchmark suite for CI smoke checks")
+    parser.add_argument(
+        "--quick", action="store_true", help="Run a reduced benchmark suite for CI smoke checks"
+    )
     parser.add_argument(
         "--experiments",
         action="store_true",

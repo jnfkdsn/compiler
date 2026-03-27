@@ -9,14 +9,14 @@ import numpy as np
 sys.path.insert(0, ".")
 
 from experimental.lazy import lazy_mse_loss
-from tensor_cpu import Tensor, TraceContext, compile_training_step, compile_sgd_update_kernel
-from tensor_cpu.nn import Linear, ReLU, Sequential, mse_loss, JITTrainer, LazyJITTrainer
+from tensor_cpu import Tensor, TraceContext, compile_sgd_update_kernel, compile_training_step
+from tensor_cpu.nn import JITTrainer, LazyJITTrainer, Linear, ReLU, Sequential, mse_loss
 from tensor_cpu.optim import SGD, Adam
-
 
 # ---------------------------------------------------------------------------
 # 1. Eager backward correctness (autograd)
 # ---------------------------------------------------------------------------
+
 
 def test_eager_backward():
     np.random.seed(10)
@@ -56,6 +56,7 @@ def test_eager_backward():
 # 2. Eager training with SGD optimizer
 # ---------------------------------------------------------------------------
 
+
 def test_eager_sgd():
     np.random.seed(11)
     model = Sequential(Linear(4, 8), ReLU(), Linear(8, 2))
@@ -74,13 +75,16 @@ def test_eager_sgd():
         opt.step()
         losses.append(float(loss.data))
 
-    assert losses[-1] < losses[0], f"SGD did not converge: first={losses[0]:.4f} last={losses[-1]:.4f}"
+    assert (
+        losses[-1] < losses[0]
+    ), f"SGD did not converge: first={losses[0]:.4f} last={losses[-1]:.4f}"
     print(f"  PASS: eager SGD (loss {losses[0]:.4f} -> {losses[-1]:.4f})")
 
 
 # ---------------------------------------------------------------------------
 # 3. Eager training with Adam optimizer
 # ---------------------------------------------------------------------------
+
 
 def test_eager_adam():
     np.random.seed(12)
@@ -100,13 +104,16 @@ def test_eager_adam():
         opt.step()
         losses.append(float(loss.data))
 
-    assert losses[-1] < losses[0], f"Adam did not converge: first={losses[0]:.4f} last={losses[-1]:.4f}"
+    assert (
+        losses[-1] < losses[0]
+    ), f"Adam did not converge: first={losses[0]:.4f} last={losses[-1]:.4f}"
     print(f"  PASS: eager Adam (loss {losses[0]:.4f} -> {losses[-1]:.4f})")
 
 
 # ---------------------------------------------------------------------------
 # 4. JITTrainer with SGD
 # ---------------------------------------------------------------------------
+
 
 def test_jit_trainer_sgd():
     np.random.seed(13)
@@ -121,13 +128,16 @@ def test_jit_trainer_sgd():
         l = trainer.step(x, y)
         losses.append(l)
 
-    assert losses[-1] < losses[0], f"JITTrainer SGD did not converge: {losses[0]:.4f} -> {losses[-1]:.4f}"
+    assert (
+        losses[-1] < losses[0]
+    ), f"JITTrainer SGD did not converge: {losses[0]:.4f} -> {losses[-1]:.4f}"
     print(f"  PASS: JITTrainer SGD (loss {losses[0]:.4f} -> {losses[-1]:.4f})")
 
 
 # ---------------------------------------------------------------------------
 # 5. JITTrainer with Adam
 # ---------------------------------------------------------------------------
+
 
 def test_jit_trainer_adam():
     np.random.seed(14)
@@ -142,13 +152,16 @@ def test_jit_trainer_adam():
         l = trainer.step(x, y)
         losses.append(l)
 
-    assert losses[-1] < losses[0], f"JITTrainer Adam did not converge: {losses[0]:.4f} -> {losses[-1]:.4f}"
+    assert (
+        losses[-1] < losses[0]
+    ), f"JITTrainer Adam did not converge: {losses[0]:.4f} -> {losses[-1]:.4f}"
     print(f"  PASS: JITTrainer Adam (loss {losses[0]:.4f} -> {losses[-1]:.4f})")
 
 
 # ---------------------------------------------------------------------------
 # 6. LazyJITTrainer
 # ---------------------------------------------------------------------------
+
 
 def test_lazy_jit_trainer():
     np.random.seed(15)
@@ -163,13 +176,16 @@ def test_lazy_jit_trainer():
         l = trainer.step(x, y)
         losses.append(l)
 
-    assert losses[-1] < losses[0], f"LazyJITTrainer did not converge: {losses[0]:.4f} -> {losses[-1]:.4f}"
+    assert (
+        losses[-1] < losses[0]
+    ), f"LazyJITTrainer did not converge: {losses[0]:.4f} -> {losses[-1]:.4f}"
     print(f"  PASS: LazyJITTrainer (loss {losses[0]:.4f} -> {losses[-1]:.4f})")
 
 
 # ---------------------------------------------------------------------------
 # 7. Full-JIT compile_training_step
 # ---------------------------------------------------------------------------
+
 
 def test_full_jit_training_step():
     np.random.seed(16)
@@ -203,7 +219,9 @@ def test_full_jit_training_step():
         b_np = update_b.run(b_np, grads[b_node_id])
         losses.append(l)
 
-    assert losses[-1] < losses[0], f"Full JIT training did not converge: {losses[0]:.4f} -> {losses[-1]:.4f}"
+    assert (
+        losses[-1] < losses[0]
+    ), f"Full JIT training did not converge: {losses[0]:.4f} -> {losses[-1]:.4f}"
     print(f"  PASS: full-JIT training step (loss {losses[0]:.4f} -> {losses[-1]:.4f})")
 
 
@@ -235,6 +253,7 @@ def test_compile_training_step_packs_gradient_outputs():
 # ---------------------------------------------------------------------------
 # 8. Graph-mode reduce gradients (mean/max) vs numerical gradients
 # ---------------------------------------------------------------------------
+
 
 def _numeric_grad_scalar_fn(fn, x: np.ndarray, eps: float = 1e-4) -> np.ndarray:
     grad = np.zeros_like(x, dtype=np.float32)
@@ -270,7 +289,7 @@ def test_graph_reduce_gradients_numerical():
 
     x_max = np.random.randn(3, 5).astype(np.float32)
     # Avoid ties to keep the subgradient well-defined for finite differences.
-    x_max += (np.arange(x_max.size, dtype=np.float32).reshape(x_max.shape) * 1e-5)
+    x_max += np.arange(x_max.size, dtype=np.float32).reshape(x_max.shape) * 1e-5
     with TraceContext() as tc_max:
         x = Tensor.from_numpy(x_max, name="x", requires_grad=True)
         loss = x.max(axis=1).mean().mark_as_output()
@@ -290,6 +309,7 @@ def test_graph_reduce_gradients_numerical():
 
 
 # ===========================================================================
+
 
 def main():
     print("=== Training Tests ===")

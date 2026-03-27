@@ -16,11 +16,18 @@ class ReduceLoweringMixin:
         total = self._numel_expr(src_node)
         out_total = self._numel_expr(node)
         axes = tuple(int(a) for a in node.attrs.get("axis", ()))
-        dst_idx = self._reduce_dst_index_expr(src_node=src_node, dst_node=node, axes=axes, idx_var="i")
+        dst_idx = self._reduce_dst_index_expr(
+            src_node=src_node, dst_node=node, axes=axes, idx_var="i"
+        )
         zero = self._cpp_zero(node)
         return self._emit_structured(
             [
-                CppFor(init="long long o = 0", cond=f"o < {out_total}", inc="++o", body=[CppLine(f"{dst}[o] = {zero};")]),
+                CppFor(
+                    init="long long o = 0",
+                    cond=f"o < {out_total}",
+                    inc="++o",
+                    body=[CppLine(f"{dst}[o] = {zero};")],
+                ),
                 CppFor(
                     init="long long i = 0",
                     cond=f"i < {total}",
@@ -37,7 +44,9 @@ class ReduceLoweringMixin:
         total = self._numel_expr(src_node)
         out_total = self._numel_expr(node)
         axes = tuple(int(a) for a in node.attrs.get("axis", ()))
-        dst_idx = self._reduce_dst_index_expr(src_node=src_node, dst_node=node, axes=axes, idx_var="i")
+        dst_idx = self._reduce_dst_index_expr(
+            src_node=src_node, dst_node=node, axes=axes, idx_var="i"
+        )
         src_sym = self._sym.get(src_node.id, ())
         reduce_parts = [src_sym[a] for a in axes if a < len(src_sym)]
         if not reduce_parts:
@@ -51,14 +60,24 @@ class ReduceLoweringMixin:
         div_expr = f"({ctype})({reduce_size_expr})"
         return self._emit_structured(
             [
-                CppFor(init="long long o = 0", cond=f"o < {out_total}", inc="++o", body=[CppLine(f"{dst}[o] = {zero};")]),
+                CppFor(
+                    init="long long o = 0",
+                    cond=f"o < {out_total}",
+                    inc="++o",
+                    body=[CppLine(f"{dst}[o] = {zero};")],
+                ),
                 CppFor(
                     init="long long i = 0",
                     cond=f"i < {total}",
                     inc="++i",
                     body=[CppLine(f"{dst}[{dst_idx}] += {src}[i];")],
                 ),
-                CppFor(init="long long o = 0", cond=f"o < {out_total}", inc="++o", body=[CppLine(f"{dst}[o] /= {div_expr};")]),
+                CppFor(
+                    init="long long o = 0",
+                    cond=f"o < {out_total}",
+                    inc="++o",
+                    body=[CppLine(f"{dst}[o] /= {div_expr};")],
+                ),
             ]
         )
 
@@ -69,7 +88,9 @@ class ReduceLoweringMixin:
         total = self._numel_expr(src_node)
         out_total = self._numel_expr(node)
         axes = tuple(int(a) for a in node.attrs.get("axis", ()))
-        dst_idx = self._reduce_dst_index_expr(src_node=src_node, dst_node=node, axes=axes, idx_var="i")
+        dst_idx = self._reduce_dst_index_expr(
+            src_node=src_node, dst_node=node, axes=axes, idx_var="i"
+        )
         return self._emit_structured(
             [
                 CppFor(

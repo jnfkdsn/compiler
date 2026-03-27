@@ -48,7 +48,9 @@ class SGD:
             if self.momentum != 0.0:
                 if self._velocity[idx] is None:
                     self._velocity[idx] = np.zeros_like(grad, dtype=np.float32)
-                self._velocity[idx] = self.momentum * self._velocity[idx] + (1.0 - self.dampening) * grad
+                self._velocity[idx] = (
+                    self.momentum * self._velocity[idx] + (1.0 - self.dampening) * grad
+                )
                 if self.nesterov:
                     update = grad + self.momentum * self._velocity[idx]
                 else:

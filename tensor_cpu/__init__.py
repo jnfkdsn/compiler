@@ -8,11 +8,11 @@ from .autodiff.train_jit import (
 )
 from .backend.codegen import CppCodegen, GeneratedKernel
 from .frontend.tracer import TraceContext
+from .jit_matmul import disable_jit_matmul, enable_jit_matmul
 from .passes import optimize_graph
 from .runtime import JITEngine
 from .static_graph import StaticGraph, SymbolicTensor
 from .tensor import Tensor
-from .jit_matmul import enable_jit_matmul, disable_jit_matmul
 
 __all__ = [
     "Tensor",

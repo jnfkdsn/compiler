@@ -6,7 +6,6 @@ from typing import Tuple
 
 from .ops import OpType
 
-
 Shape = Tuple[int, ...]
 AxisLike = int | tuple[int, ...] | None
 SUPPORTED_DTYPES = frozenset({"float32", "float64"})
@@ -16,7 +15,9 @@ class ShapeInferenceError(ValueError):
     """Raised when tensor shapes are incompatible for an operation."""
 
 
-def infer_binary(op_type: OpType, lhs_shape: Shape, rhs_shape: Shape, lhs_dtype: str, rhs_dtype: str) -> tuple[Shape, str]:
+def infer_binary(
+    op_type: OpType, lhs_shape: Shape, rhs_shape: Shape, lhs_dtype: str, rhs_dtype: str
+) -> tuple[Shape, str]:
     out_dtype = _merge_dtype(lhs_dtype, rhs_dtype)
 
     if op_type in (OpType.ADD, OpType.SUB, OpType.MUL, OpType.DIV, OpType.EQ):
@@ -27,7 +28,9 @@ def infer_binary(op_type: OpType, lhs_shape: Shape, rhs_shape: Shape, lhs_dtype:
 
     if op_type == OpType.MATMUL:
         if len(lhs_shape) < 2 or len(rhs_shape) < 2:
-            raise ShapeInferenceError(f"MatMul requires at least 2D inputs, got {lhs_shape} @ {rhs_shape}")
+            raise ShapeInferenceError(
+                f"MatMul requires at least 2D inputs, got {lhs_shape} @ {rhs_shape}"
+            )
         if lhs_shape[-1] != rhs_shape[-2]:
             raise ShapeInferenceError(f"MatMul inner dimension mismatch: {lhs_shape} @ {rhs_shape}")
         batch_l = lhs_shape[:-2]
@@ -58,7 +61,9 @@ def infer_reduce(
     if op_type not in (OpType.SUM, OpType.MEAN, OpType.MAX):
         raise ShapeInferenceError(f"Unsupported reduce op for inference: {op_type}")
     if src_dtype not in SUPPORTED_DTYPES:
-        raise ShapeInferenceError(f"Unsupported dtype for reduce: {src_dtype}. Supported: {SUPPORTED_DTYPES}")
+        raise ShapeInferenceError(
+            f"Unsupported dtype for reduce: {src_dtype}. Supported: {SUPPORTED_DTYPES}"
+        )
 
     axes = normalize_reduce_axes(axis=axis, ndim=len(src_shape))
     if not axes:

@@ -4,10 +4,10 @@ import time
 
 import pytest
 
-
 try:
     import pytest_benchmark.fixture  # type: ignore  # noqa: F401
 except Exception:
+
     @pytest.fixture
     def benchmark():
         """Fallback benchmark fixture for environments without pytest-benchmark."""

@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Sequence, TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, Dict, List, Sequence
 
 import numpy as np
 
-from ..autodiff.train_jit import compile_adam_update_kernels, compile_sgd_update_kernel, compile_training_step
+from ..autodiff.train_jit import (
+    compile_adam_update_kernels,
+    compile_sgd_update_kernel,
+    compile_training_step,
+)
 from ..frontend.tracer import TraceContext
 from ..tensor import Tensor
 from .modules import Module
@@ -143,7 +147,9 @@ class JITTrainer:
 
         if self.optimizer == "sgd":
             self._sgd_kernels = [
-                compile_sgd_update_kernel(shape=slot.get().data.shape, lr=self.lr, weight_decay=self.weight_decay)
+                compile_sgd_update_kernel(
+                    shape=slot.get().data.shape, lr=self.lr, weight_decay=self.weight_decay
+                )
                 for slot in self._param_slots
             ]
         elif self.optimizer == "adam":
@@ -156,8 +162,12 @@ class JITTrainer:
                 )
                 for slot in self._param_slots
             ]
-            self._adam_m = [np.zeros_like(slot.get().data, dtype=np.float32) for slot in self._param_slots]
-            self._adam_v = [np.zeros_like(slot.get().data, dtype=np.float32) for slot in self._param_slots]
+            self._adam_m = [
+                np.zeros_like(slot.get().data, dtype=np.float32) for slot in self._param_slots
+            ]
+            self._adam_v = [
+                np.zeros_like(slot.get().data, dtype=np.float32) for slot in self._param_slots
+            ]
             self._adam_step = 0
         else:
             raise ValueError(f"Unsupported optimizer: {self.optimizer}")
@@ -254,7 +264,9 @@ class LazyJITTrainer:
 
         if self.optimizer == "sgd":
             self._sgd_kernels = [
-                compile_sgd_update_kernel(shape=slot.get().data.shape, lr=self.lr, weight_decay=self.weight_decay)
+                compile_sgd_update_kernel(
+                    shape=slot.get().data.shape, lr=self.lr, weight_decay=self.weight_decay
+                )
                 for slot in self._param_slots
             ]
             self._adam_kernels = []
@@ -272,8 +284,12 @@ class LazyJITTrainer:
                 )
                 for slot in self._param_slots
             ]
-            self._adam_m = [np.zeros_like(slot.get().data, dtype=np.float32) for slot in self._param_slots]
-            self._adam_v = [np.zeros_like(slot.get().data, dtype=np.float32) for slot in self._param_slots]
+            self._adam_m = [
+                np.zeros_like(slot.get().data, dtype=np.float32) for slot in self._param_slots
+            ]
+            self._adam_v = [
+                np.zeros_like(slot.get().data, dtype=np.float32) for slot in self._param_slots
+            ]
             self._adam_step = 0
         else:
             raise ValueError(f"Unsupported optimizer: {self.optimizer}")

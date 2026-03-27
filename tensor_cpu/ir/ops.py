@@ -29,7 +29,7 @@ class OpType(str, Enum):
     PACK = "pack"
     FUSED_MATMUL_BIAS = "fused_matmul_bias"
     FUSED_MATMUL_BIAS_RELU = "fused_matmul_bias_relu"
-    
+
     CONTROL_FLOW = "control_flow"
     IF = "if"
     ELSE = "else"
@@ -38,6 +38,5 @@ class OpType(str, Enum):
     FOR = "for"
     BREAK = "break"
     CONTINUE = "continue"
-    
-    OUTPUT = "output"
 
+    OUTPUT = "output"

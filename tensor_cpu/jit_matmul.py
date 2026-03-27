@@ -12,7 +12,6 @@ import numpy as np
 from . import dispatcher
 from .ir.ops import OpType
 
-
 _JIT_MATMUL_CACHE: dict[tuple[int, int, int, bool], object] = {}
 _JIT_MATMUL_USE_HPC: bool = True
 _JIT_MATMUL_BUILDING: bool = False

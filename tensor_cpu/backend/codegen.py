@@ -16,7 +16,9 @@ from .shape_solver import ShapeSolverMixin
 class CppCodegen(ShapeSolverMixin, MemoryPlannerMixin, OpLoweringMixin, CppEmitterMixin):
     """Generate C++ kernels from the stable Graph IR."""
 
-    def __init__(self, graph: Graph, use_hpc_template: bool = False, enable_memory_planner: bool = True) -> None:
+    def __init__(
+        self, graph: Graph, use_hpc_template: bool = False, enable_memory_planner: bool = True
+    ) -> None:
         self.graph = graph
         self.use_hpc_template = use_hpc_template
         self.enable_memory_planner = enable_memory_planner
@@ -80,7 +82,11 @@ class CppCodegen(ShapeSolverMixin, MemoryPlannerMixin, OpLoweringMixin, CppEmitt
             output_sym_shape=output_sym,
             input_ranks=input_ranks,
             workspace_slots=tuple(memory.workspace_sym),
-            exact_input_shapes=tuple(tuple(node.shape) for node in inputs) if self._requires_exact_input_shapes else (),
+            exact_input_shapes=(
+                tuple(tuple(node.shape) for node in inputs)
+                if self._requires_exact_input_shapes
+                else ()
+            ),
         )
 
     def _resolve_output(self, ordered: List[Node]) -> Node:
