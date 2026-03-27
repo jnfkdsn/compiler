@@ -40,16 +40,28 @@ from .cpp_ast import (
 )
 from .cpp_codegen import CodegenVisitor, generate_cpp
 from .lowering import GraphLowering, LoweringContext
-from .tir import Allocate
+from .tir import (
+    Allocate,
+    Buffer,
+    BufferLoad,
+    BufferStore,
+    IfStmt,
+    IRModule,
+    LetStmt,
+    LoopAnnotation,
+    PrimFunc,
+    TIRExpr,
+    TIRNode,
+    TIRStmt,
+    TIRTransformer,
+    TIRVisitor,
+)
 from .tir import Binary as TIRBinary
 from .tir import Block as TIRBlock
-from .tir import Buffer, BufferLoad, BufferStore
 from .tir import CallExpr as TIRCallExpr
 from .tir import Const as TIRConst
 from .tir import For as TIRFor
-from .tir import IfStmt, IRModule, LetStmt, LoopAnnotation, PrimFunc
 from .tir import Ternary as TIRTernary
-from .tir import TIRExpr, TIRNode, TIRStmt, TIRTransformer, TIRVisitor
 from .tir import Unary as TIRUnary
 from .tir import Var as TIRVar
 from .tir_to_cpp import TIRToCppConverter, convert_tir_to_cpp

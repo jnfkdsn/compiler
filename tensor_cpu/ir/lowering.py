@@ -12,12 +12,10 @@ The lowering process:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
 
 from .graph import Graph, Node
 from .ops import OpType
 from .tir import (
-    Allocate,
     Binary,
     Block,
     Buffer,
@@ -29,7 +27,6 @@ from .tir import (
     IfStmt,
     IRModule,
     LetStmt,
-    LoopAnnotation,
     PrimFunc,
     Ternary,
     TIRExpr,
@@ -44,10 +41,10 @@ class LoweringContext:
     """Context for the lowering process."""
 
     graph: Graph
-    sym_shapes: Dict[int, Tuple[str, ...]] = field(default_factory=dict)
-    sym_strides: Dict[int, Tuple[str, ...]] = field(default_factory=dict)
-    buffers: Dict[int, Buffer] = field(default_factory=dict)
-    var_names: Dict[int, str] = field(default_factory=dict)
+    sym_shapes: dict[int, tuple[str, ...]] = field(default_factory=dict)
+    sym_strides: dict[int, tuple[str, ...]] = field(default_factory=dict)
+    buffers: dict[int, Buffer] = field(default_factory=dict)
+    var_names: dict[int, str] = field(default_factory=dict)
     compute_dtype: str = "float32"
 
 
@@ -57,8 +54,8 @@ class GraphLowering:
     def __init__(
         self,
         graph: Graph,
-        sym_shapes: Dict[int, Tuple[str, ...]] = None,
-        sym_strides: Dict[int, Tuple[str, ...]] = None,
+        sym_shapes: dict[int, tuple[str, ...]] = None,
+        sym_strides: dict[int, tuple[str, ...]] = None,
     ) -> None:
         self.ctx = LoweringContext(
             graph=graph,
@@ -83,7 +80,7 @@ class GraphLowering:
                 continue
             self._create_buffer(node)
 
-        stmts: List[TIRStmt] = []
+        stmts: list[TIRStmt] = []
         for node in ordered:
             if node.op_type == OpType.INPUT:
                 continue
@@ -104,7 +101,7 @@ class GraphLowering:
 
         return IRModule(functions={"run_kernel": func})
 
-    def _resolve_output(self, ordered: List[Node]) -> Node:
+    def _resolve_output(self, ordered: list[Node]) -> Node:
         if self.ctx.graph.output_ids:
             return self.ctx.graph.get_node(self.ctx.graph.output_ids[-1])
         if not ordered:
@@ -126,7 +123,7 @@ class GraphLowering:
         )
         self.ctx.buffers[node.id] = buffer
 
-    def _compute_strides(self, dims: Tuple[str, ...]) -> Tuple[str, ...]:
+    def _compute_strides(self, dims: tuple[str, ...]) -> tuple[str, ...]:
         if not dims:
             return ()
         strides = ["1"] * len(dims)
@@ -137,10 +134,10 @@ class GraphLowering:
                 strides[i] = f"({strides[i + 1]} * {dims[i + 1]})"
         return tuple(strides)
 
-    def _lower_const(self, node: Node) -> List[TIRStmt]:
+    def _lower_const(self, node: Node) -> list[TIRStmt]:
         return []
 
-    def _lower_node(self, node: Node) -> List[TIRStmt]:
+    def _lower_node(self, node: Node) -> list[TIRStmt]:
         op = node.op_type
         if op in (OpType.ADD, OpType.SUB, OpType.MUL, OpType.DIV):
             return self._lower_binary_elementwise(node)
@@ -164,7 +161,7 @@ class GraphLowering:
             return self._lower_fused_matmul(node)
         raise NotImplementedError(f"Unsupported op in lowering: {op}")
 
-    def _lower_binary_elementwise(self, node: Node) -> List[TIRStmt]:
+    def _lower_binary_elementwise(self, node: Node) -> list[TIRStmt]:
         lhs_node = self.ctx.graph.get_node(node.inputs[0])
         rhs_node = self.ctx.graph.get_node(node.inputs[1])
         op_map = {OpType.ADD: "+", OpType.SUB: "-", OpType.MUL: "*", OpType.DIV: "/"}
@@ -186,7 +183,7 @@ class GraphLowering:
         )
         return [loop]
 
-    def _lower_eq(self, node: Node) -> List[TIRStmt]:
+    def _lower_eq(self, node: Node) -> list[TIRStmt]:
         lhs_node = self.ctx.graph.get_node(node.inputs[0])
         rhs_node = self.ctx.graph.get_node(node.inputs[1])
 
@@ -215,7 +212,7 @@ class GraphLowering:
         )
         return [loop]
 
-    def _lower_relu(self, node: Node) -> List[TIRStmt]:
+    def _lower_relu(self, node: Node) -> list[TIRStmt]:
         src_node = self.ctx.graph.get_node(node.inputs[0])
         i_var = Var("i", "int64")
         total = self._numel_expr(node)
@@ -234,7 +231,7 @@ class GraphLowering:
         )
         return [loop]
 
-    def _lower_relu_grad(self, node: Node) -> List[TIRStmt]:
+    def _lower_relu_grad(self, node: Node) -> list[TIRStmt]:
         src_node = self.ctx.graph.get_node(node.inputs[0])
         grad_node = self.ctx.graph.get_node(node.inputs[1])
 
@@ -261,7 +258,7 @@ class GraphLowering:
         )
         return [loop]
 
-    def _lower_unary_math(self, node: Node) -> List[TIRStmt]:
+    def _lower_unary_math(self, node: Node) -> list[TIRStmt]:
         src_node = self.ctx.graph.get_node(node.inputs[0])
         i_var = Var("i", "int64")
         total = self._numel_expr(node)
@@ -291,7 +288,7 @@ class GraphLowering:
         )
         return [loop]
 
-    def _lower_transpose(self, node: Node) -> List[TIRStmt]:
+    def _lower_transpose(self, node: Node) -> list[TIRStmt]:
         src_node = self.ctx.graph.get_node(node.inputs[0])
         src_sym = self.ctx.sym_shapes.get(src_node.id, ())
         rank = len(src_sym)
@@ -309,7 +306,7 @@ class GraphLowering:
         dst_strides = self.ctx.sym_strides.get(node.id, ())
         src_strides = self.ctx.sym_strides.get(src_node.id, ())
 
-        stmts: List[TIRStmt] = [
+        stmts: list[TIRStmt] = [
             LetStmt(Var("src_idx", "int64"), Const(0), Block([])),
             LetStmt(Var("rem", "int64"), i_var, Block([])),
         ]
@@ -317,12 +314,12 @@ class GraphLowering:
         src_idx_var = Var("src_idx")
         rem_var = Var("rem")
 
-        inner_stmts: List[TIRStmt] = []
+        inner_stmts: list[TIRStmt] = []
         for d in range(rank):
             dst_stride = dst_strides[d]
             c_var = Var(f"c{d}", "int64")
             dst_stride_expr = Const(int(dst_stride)) if dst_stride.isdigit() else Var(dst_stride)
-            dst_dim_expr = self._get_dim_expr(node, d)
+            self._get_dim_expr(node, d)
 
             coord_expr = Binary(rem_var, "/", dst_stride_expr)
             inner_stmts.append(LetStmt(c_var, coord_expr, Block([])))
@@ -356,7 +353,7 @@ class GraphLowering:
 
         return [For(i_var, Const(0), total, body)]
 
-    def _lower_broadcast_to(self, node: Node) -> List[TIRStmt]:
+    def _lower_broadcast_to(self, node: Node) -> list[TIRStmt]:
         src_node = self.ctx.graph.get_node(node.inputs[0])
         i_var = Var("i", "int64")
         total = self._numel_expr(node)
@@ -372,7 +369,7 @@ class GraphLowering:
         )
         return [loop]
 
-    def _lower_reduce(self, node: Node) -> List[TIRStmt]:
+    def _lower_reduce(self, node: Node) -> list[TIRStmt]:
         src_node = self.ctx.graph.get_node(node.inputs[0])
         axes = tuple(int(a) for a in node.attrs.get("axis", ()))
 
@@ -428,7 +425,7 @@ class GraphLowering:
 
         return stmts
 
-    def _lower_matmul(self, node: Node) -> List[TIRStmt]:
+    def _lower_matmul(self, node: Node) -> list[TIRStmt]:
         a_node = self.ctx.graph.get_node(node.inputs[0])
         b_node = self.ctx.graph.get_node(node.inputs[1])
 
@@ -477,7 +474,7 @@ class GraphLowering:
 
         return [i_loop]
 
-    def _lower_fused_matmul(self, node: Node) -> List[TIRStmt]:
+    def _lower_fused_matmul(self, node: Node) -> list[TIRStmt]:
         a_node = self.ctx.graph.get_node(node.inputs[0])
         b_node = self.ctx.graph.get_node(node.inputs[1])
         bias_node = self.ctx.graph.get_node(node.inputs[2])
@@ -580,7 +577,7 @@ class GraphLowering:
 
         aligned_src = ("1",) * (len(dst_sym) - len(src_sym)) + src_sym
 
-        terms: List[TIRExpr] = []
+        terms: list[TIRExpr] = []
         for axis, src_d in enumerate(aligned_src):
             if src_d == "1":
                 continue
@@ -602,7 +599,7 @@ class GraphLowering:
         return result
 
     def _reduce_dst_index_expr(
-        self, src_node: Node, dst_node: Node, axes: Tuple[int, ...], idx_var: Var
+        self, src_node: Node, dst_node: Node, axes: tuple[int, ...], idx_var: Var
     ) -> TIRExpr:
         dst_sym = self.ctx.sym_shapes.get(dst_node.id, ())
         if not dst_sym:
@@ -613,7 +610,7 @@ class GraphLowering:
         dst_strides = self.ctx.sym_strides.get(dst_node.id, ())
 
         axes_set = set(axes)
-        terms: List[TIRExpr] = []
+        terms: list[TIRExpr] = []
         dst_axis = 0
 
         for src_axis, src_d in enumerate(src_sym):
@@ -644,7 +641,7 @@ class GraphLowering:
             result = Binary(result, "+", t)
         return result
 
-    def _create_store(self, node: Node, indices: List[TIRExpr], value: TIRExpr) -> BufferStore:
+    def _create_store(self, node: Node, indices: list[TIRExpr], value: TIRExpr) -> BufferStore:
         return BufferStore(
             buffer=self.ctx.buffers[node.id],
             value=value,

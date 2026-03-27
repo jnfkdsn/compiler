@@ -13,16 +13,32 @@ Features:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from dataclasses import dataclass
+from typing import Any
 
 try:
-    from sympy import And, Eq
+    from sympy import (
+        And,
+        Eq,
+        Ge,
+        Gt,
+        Integer,
+        Le,
+        Lt,
+        Ne,
+        Not,
+        Or,
+        Rational,
+        Symbol,
+        expand,
+        factor,
+        simplify,
+        solve,
+        symbols,
+        sympify,
+    )
     from sympy import Expr as SymExpr
-    from sympy import Ge, Gt, Integer, Le, Lt, Ne, Not, Or, Rational
-    from sympy import Symbol
     from sympy import Symbol as SymSymbol
-    from sympy import expand, factor, simplify, solve, symbols, sympify
     from sympy.core.numbers import NegativeOne, One, Zero
 
     HAS_SYMPY = True
@@ -37,7 +53,7 @@ class SymbolicDim:
     """A symbolic dimension expression."""
 
     expr: Any  # SymPy expression when available, string otherwise
-    name: Optional[str] = None
+    name: str | None = None
 
     def __post_init__(self):
         if HAS_SYMPY and not isinstance(self.expr, SymExpr):
@@ -46,42 +62,42 @@ class SymbolicDim:
             elif isinstance(self.expr, int):
                 self.expr = Integer(self.expr)
 
-    def __add__(self, other: Union["SymbolicDim", int]) -> "SymbolicDim":
+    def __add__(self, other: SymbolicDim | int) -> SymbolicDim:
         if HAS_SYMPY:
             other_expr = other.expr if isinstance(other, SymbolicDim) else Integer(other)
             return SymbolicDim(self.expr + other_expr)
         return SymbolicDim(f"({self.expr} + {other})")
 
-    def __radd__(self, other: int) -> "SymbolicDim":
+    def __radd__(self, other: int) -> SymbolicDim:
         return self.__add__(other)
 
-    def __sub__(self, other: Union["SymbolicDim", int]) -> "SymbolicDim":
+    def __sub__(self, other: SymbolicDim | int) -> SymbolicDim:
         if HAS_SYMPY:
             other_expr = other.expr if isinstance(other, SymbolicDim) else Integer(other)
             return SymbolicDim(self.expr - other_expr)
         return SymbolicDim(f"({self.expr} - {other})")
 
-    def __rsub__(self, other: int) -> "SymbolicDim":
+    def __rsub__(self, other: int) -> SymbolicDim:
         if HAS_SYMPY:
             return SymbolicDim(Integer(other) - self.expr)
         return SymbolicDim(f"({other} - {self.expr})")
 
-    def __mul__(self, other: Union["SymbolicDim", int]) -> "SymbolicDim":
+    def __mul__(self, other: SymbolicDim | int) -> SymbolicDim:
         if HAS_SYMPY:
             other_expr = other.expr if isinstance(other, SymbolicDim) else Integer(other)
             return SymbolicDim(self.expr * other_expr)
         return SymbolicDim(f"({self.expr} * {other})")
 
-    def __rmul__(self, other: int) -> "SymbolicDim":
+    def __rmul__(self, other: int) -> SymbolicDim:
         return self.__mul__(other)
 
-    def __floordiv__(self, other: Union["SymbolicDim", int]) -> "SymbolicDim":
+    def __floordiv__(self, other: SymbolicDim | int) -> SymbolicDim:
         if HAS_SYMPY:
             other_expr = other.expr if isinstance(other, SymbolicDim) else Integer(other)
             return SymbolicDim(self.expr // other_expr)
         return SymbolicDim(f"({self.expr} // {other})")
 
-    def __mod__(self, other: Union["SymbolicDim", int]) -> "SymbolicDim":
+    def __mod__(self, other: SymbolicDim | int) -> SymbolicDim:
         if HAS_SYMPY:
             other_expr = other.expr if isinstance(other, SymbolicDim) else Integer(other)
             return SymbolicDim(self.expr % other_expr)
@@ -98,7 +114,7 @@ class SymbolicDim:
     def __hash__(self) -> int:
         return hash(str(self.expr))
 
-    def simplify(self) -> "SymbolicDim":
+    def simplify(self) -> SymbolicDim:
         """Simplify the expression."""
         if HAS_SYMPY:
             return SymbolicDim(simplify(self.expr))
@@ -110,7 +126,7 @@ class SymbolicDim:
             return self.expr.is_number
         return str(self.expr).isdigit()
 
-    def evaluate(self, bindings: Dict[str, int]) -> int:
+    def evaluate(self, bindings: dict[str, int]) -> int:
         """Evaluate the expression with given variable bindings."""
         if HAS_SYMPY:
             result = self.expr
@@ -136,7 +152,7 @@ class SymbolicDim:
 class SymbolicShape:
     """A symbolic shape (tuple of symbolic dimensions)."""
 
-    dims: Tuple[SymbolicDim, ...]
+    dims: tuple[SymbolicDim, ...]
 
     def __post_init__(self):
         if not isinstance(self.dims, tuple):
@@ -161,7 +177,7 @@ class SymbolicShape:
             result = result * d
         return result
 
-    def evaluate(self, bindings: Dict[str, int]) -> Tuple[int, ...]:
+    def evaluate(self, bindings: dict[str, int]) -> tuple[int, ...]:
         """Evaluate all dimensions with given bindings."""
         return tuple(d.evaluate(bindings) for d in self.dims)
 
@@ -176,9 +192,9 @@ class SymbolicEngine:
     """Symbolic shape inference and constraint solving engine."""
 
     def __init__(self) -> None:
-        self._symbols: Dict[str, Symbol] = {}
-        self._constraints: List[Any] = []
-        self._bindings: Dict[str, int] = {}
+        self._symbols: dict[str, Symbol] = {}
+        self._constraints: list[Any] = []
+        self._bindings: dict[str, int] = {}
 
     def get_symbol(self, name: str) -> Symbol:
         """Get or create a symbolic variable."""
@@ -193,7 +209,7 @@ class SymbolicEngine:
         """Create a symbolic dimension variable."""
         return SymbolicDim(self.get_symbol(name), name=name)
 
-    def create_symbolic_shape(self, names: List[str]) -> SymbolicShape:
+    def create_symbolic_shape(self, names: list[str]) -> SymbolicShape:
         """Create a symbolic shape from dimension names."""
         return SymbolicShape(tuple(self.create_symbolic_dim(n) for n in names))
 
@@ -217,7 +233,7 @@ class SymbolicEngine:
         if HAS_SYMPY:
             self.add_constraint(Gt(dim.expr, 0))
 
-    def solve_constraints(self) -> Optional[Dict[str, int]]:
+    def solve_constraints(self) -> dict[str, int] | None:
         """Solve all constraints and return possible solutions."""
         if not HAS_SYMPY or not self._constraints:
             return None
@@ -243,10 +259,7 @@ class SymbolicEngine:
             return True
 
         eq_constraint = Eq(dim1.expr, dim2.expr)
-        if eq_constraint in self._constraints:
-            return True
-
-        return False
+        return eq_constraint in self._constraints
 
     def can_prove(self, condition: Any) -> bool:
         """Try to prove a condition given current constraints."""
@@ -266,19 +279,19 @@ class SymbolicShapeInference:
 
     def __init__(self) -> None:
         self.engine = SymbolicEngine()
-        self._node_shapes: Dict[int, SymbolicShape] = {}
+        self._node_shapes: dict[int, SymbolicShape] = {}
 
     def set_input_shape(self, node_id: int, shape: SymbolicShape) -> None:
         """Set the symbolic shape for an input node."""
         self._node_shapes[node_id] = shape
 
-    def set_input_shape_from_names(self, node_id: int, dim_names: List[str]) -> SymbolicShape:
+    def set_input_shape_from_names(self, node_id: int, dim_names: list[str]) -> SymbolicShape:
         """Set symbolic shape from dimension name list."""
         shape = self.engine.create_symbolic_shape(dim_names)
         self._node_shapes[node_id] = shape
         return shape
 
-    def get_shape(self, node_id: int) -> Optional[SymbolicShape]:
+    def get_shape(self, node_id: int) -> SymbolicShape | None:
         """Get the symbolic shape for a node."""
         return self._node_shapes.get(node_id)
 
@@ -295,9 +308,7 @@ class SymbolicShapeInference:
         for l, r in zip(lhs_padded, rhs_padded):
             if l.is_constant() and l.evaluate({}) == 1:
                 result_dims.append(r)
-            elif r.is_constant() and r.evaluate({}) == 1:
-                result_dims.append(l)
-            elif self.engine.are_equal(l, r):
+            elif r.is_constant() and r.evaluate({}) == 1 or self.engine.are_equal(l, r):
                 result_dims.append(l)
             else:
                 if HAS_SYMPY:
@@ -326,7 +337,7 @@ class SymbolicShapeInference:
         return SymbolicShape(batch_shape.dims + (m, n))
 
     def infer_reduce_shape(
-        self, input_shape: SymbolicShape, axes: Tuple[int, ...], keepdims: bool = False
+        self, input_shape: SymbolicShape, axes: tuple[int, ...], keepdims: bool = False
     ) -> SymbolicShape:
         """Infer shape for reduction operations."""
         if not axes:
@@ -343,7 +354,7 @@ class SymbolicShapeInference:
         return SymbolicShape(tuple(result_dims))
 
     def infer_reshape_shape(
-        self, input_shape: SymbolicShape, target_dims: List[SymbolicDim]
+        self, input_shape: SymbolicShape, target_dims: list[SymbolicDim]
     ) -> SymbolicShape:
         """Infer and validate reshape shape."""
         input_numel = input_shape.numel()
@@ -379,7 +390,7 @@ class SymbolicShapeInference:
         return self.infer_elementwise_shape(input_shape, target_shape)
 
     def infer_transpose_shape(
-        self, input_shape: SymbolicShape, perm: Optional[Tuple[int, ...]] = None
+        self, input_shape: SymbolicShape, perm: tuple[int, ...] | None = None
     ) -> SymbolicShape:
         """Infer shape for transpose operation."""
         if perm is None:
@@ -390,16 +401,16 @@ class SymbolicShapeInference:
     def infer_slice_shape(
         self,
         input_shape: SymbolicShape,
-        starts: Tuple[int, ...],
-        ends: Tuple[int, ...],
-        steps: Optional[Tuple[int, ...]] = None,
+        starts: tuple[int, ...],
+        ends: tuple[int, ...],
+        steps: tuple[int, ...] | None = None,
     ) -> SymbolicShape:
         """Infer shape for slice operation."""
         if steps is None:
             steps = (1,) * len(starts)
 
         result_dims = []
-        for i, (dim, start, end, step) in enumerate(zip(input_shape.dims, starts, ends, steps)):
+        for _i, (dim, start, end, step) in enumerate(zip(input_shape.dims, starts, ends, steps)):
             if dim.is_constant():
                 d = dim.evaluate({})
                 length = max(
@@ -425,13 +436,9 @@ class SymbolicShapeInference:
         if shape.rank != expected.rank:
             return False
 
-        for s, e in zip(shape.dims, expected.dims):
-            if not self.engine.are_equal(s, e):
-                return False
+        return all(self.engine.are_equal(s, e) for s, e in zip(shape.dims, expected.dims))
 
-        return True
-
-    def get_strides(self, shape: SymbolicShape) -> Tuple[SymbolicDim, ...]:
+    def get_strides(self, shape: SymbolicShape) -> tuple[SymbolicDim, ...]:
         """Compute contiguous strides for a shape."""
         if not shape.dims:
             return ()
@@ -442,7 +449,7 @@ class SymbolicShapeInference:
 
         return tuple(strides)
 
-    def to_string_repr(self, shape: SymbolicShape) -> Tuple[str, ...]:
+    def to_string_repr(self, shape: SymbolicShape) -> tuple[str, ...]:
         """Convert symbolic shape to string representation for codegen."""
         return tuple(str(d) for d in shape.dims)
 

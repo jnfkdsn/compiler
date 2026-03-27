@@ -9,12 +9,11 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import List
 
 import numpy as np
 
 from .abi import decode_abi_status
-from .backend.codegen import CppCodegen, GeneratedKernel
+from .backend.codegen import CppCodegen
 from .ir.graph import Graph, Node
 
 _MAX_RANK = 8  # ABI 支持的最大秩（8）
@@ -48,7 +47,7 @@ def _find_compiler() -> str:
     raise JITCompileError("No C++ compiler found (clang++, g++, or cl).")
 
 
-def _build_command(compiler: str, cpp_path: Path, lib_path: Path, openmp: bool = True) -> List[str]:
+def _build_command(compiler: str, cpp_path: Path, lib_path: Path, openmp: bool = True) -> list[str]:
     if compiler == "cl":
         cmd = [
             "cl",
@@ -146,8 +145,8 @@ class JITModule:
             return input_shapes[int(m.group(1))][int(m.group(2))]
         try:
             return int(expr)
-        except ValueError:
-            raise ValueError(f"Cannot evaluate symbolic dim: {expr}")
+        except ValueError as err:
+            raise ValueError(f"Cannot evaluate symbolic dim: {expr}") from err
 
     def _compute_output_shape(
         self, input_shapes: list[tuple[int, ...]]

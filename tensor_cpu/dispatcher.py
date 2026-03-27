@@ -17,11 +17,12 @@ Centralizes three concerns previously scattered across tensor.py and tracer.py:
 from __future__ import annotations
 
 import threading
-from typing import Any, Callable, Dict, Optional
+from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 
-from .autodiff.vjp import _expand_reduce_grad, _sum_to_shape, get_vjp_rule
+from .autodiff.vjp import get_vjp_rule
 from .ir.ops import OpType
 
 # ---------------------------------------------------------------------------
@@ -70,7 +71,7 @@ def set_tracing(enabled: bool, graph: Any = None) -> None:
 # Eager op registry  (pluggable — JIT matmul overrides the MATMUL slot)
 # ---------------------------------------------------------------------------
 
-_DEFAULT_BINARY: Dict[OpType, Callable[..., np.ndarray]] = {
+_DEFAULT_BINARY: dict[OpType, Callable[..., np.ndarray]] = {
     OpType.ADD: lambda a, b: a + b,
     OpType.SUB: lambda a, b: a - b,
     OpType.MUL: lambda a, b: a * b,
@@ -79,7 +80,7 @@ _DEFAULT_BINARY: Dict[OpType, Callable[..., np.ndarray]] = {
     OpType.RELU_GRAD: lambda x, grad: np.where(x > 0, grad, 0.0).astype(grad.dtype, copy=False),
 }
 
-_DEFAULT_UNARY: Dict[OpType, Callable[..., np.ndarray]] = {
+_DEFAULT_UNARY: dict[OpType, Callable[..., np.ndarray]] = {
     OpType.RELU: lambda x: np.maximum(x, 0.0),
     OpType.EXP: np.exp,
     OpType.LOG: np.log,
@@ -87,8 +88,8 @@ _DEFAULT_UNARY: Dict[OpType, Callable[..., np.ndarray]] = {
     OpType.TRANSPOSE: lambda x: x.T,
 }
 
-_EAGER_BINARY: Dict[OpType, Callable[..., np.ndarray]] = dict(_DEFAULT_BINARY)
-_EAGER_UNARY: Dict[OpType, Callable[..., np.ndarray]] = dict(_DEFAULT_UNARY)
+_EAGER_BINARY: dict[OpType, Callable[..., np.ndarray]] = dict(_DEFAULT_BINARY)
+_EAGER_UNARY: dict[OpType, Callable[..., np.ndarray]] = dict(_DEFAULT_UNARY)
 
 
 def eager_binary(op_type: OpType, lhs: np.ndarray, rhs: np.ndarray) -> np.ndarray:
@@ -120,17 +121,17 @@ def reset_eager_binary(op_type: OpType) -> None:
 # ---------------------------------------------------------------------------
 # Gradient rules — delegated to vjp.py (single source of truth)
 # ---------------------------------------------------------------------------
-def binary_grad_rule(op_type: OpType) -> Optional[Callable]:
+def binary_grad_rule(op_type: OpType) -> Callable | None:
     rule = get_vjp_rule(op_type)
     return rule.eager if rule else None
 
 
-def unary_grad_rule(op_type: OpType) -> Optional[Callable]:
+def unary_grad_rule(op_type: OpType) -> Callable | None:
     rule = get_vjp_rule(op_type)
     return rule.eager if rule else None
 
 
-def reduce_grad_rule(op_type: OpType) -> Optional[Callable]:
+def reduce_grad_rule(op_type: OpType) -> Callable | None:
     """Return the eager reduce gradient function, or ``None``."""
     rule = get_vjp_rule(op_type)
     return rule.eager if rule else None

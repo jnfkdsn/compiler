@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional
 
 import numpy as np
 
@@ -21,7 +20,7 @@ class SymbolicTensor:
     after `StaticGraph.compile(...).run(...)`.
     """
 
-    graph: "StaticGraph"
+    graph: StaticGraph
     node: Node
 
     @property
@@ -32,14 +31,14 @@ class SymbolicTensor:
     def dtype(self) -> str:
         return str(self.node.dtype)
 
-    def _ensure(self, other: "SymbolicTensor | float") -> "SymbolicTensor":
+    def _ensure(self, other: SymbolicTensor | float) -> SymbolicTensor:
         if isinstance(other, SymbolicTensor):
             if other.graph is not self.graph:
                 raise ValueError("Cannot mix SymbolicTensor from different StaticGraph instances.")
             return other
         return self.graph.const(float(other), dtype=self.dtype)
 
-    def _binary(self, op: OpType, other: "SymbolicTensor | float", name: str) -> "SymbolicTensor":
+    def _binary(self, op: OpType, other: SymbolicTensor | float, name: str) -> SymbolicTensor:
         rhs = self._ensure(other)
         out_shape, out_dtype = infer_binary(op, self.shape, rhs.shape, self.dtype, rhs.dtype)
         n = self.graph._graph.add_node(
@@ -51,7 +50,7 @@ class SymbolicTensor:
         )
         return SymbolicTensor(graph=self.graph, node=n)
 
-    def _unary(self, op: OpType, name: str) -> "SymbolicTensor":
+    def _unary(self, op: OpType, name: str) -> SymbolicTensor:
         out_shape, out_dtype = infer_unary(op, self.shape, self.dtype)
         n = self.graph._graph.add_node(
             op_type=op,
@@ -62,57 +61,57 @@ class SymbolicTensor:
         )
         return SymbolicTensor(graph=self.graph, node=n)
 
-    def __add__(self, other: "SymbolicTensor | float") -> "SymbolicTensor":
+    def __add__(self, other: SymbolicTensor | float) -> SymbolicTensor:
         return self._binary(OpType.ADD, other, "add")
 
-    def __radd__(self, other: "SymbolicTensor | float") -> "SymbolicTensor":
+    def __radd__(self, other: SymbolicTensor | float) -> SymbolicTensor:
         return self.__add__(other)
 
-    def __sub__(self, other: "SymbolicTensor | float") -> "SymbolicTensor":
+    def __sub__(self, other: SymbolicTensor | float) -> SymbolicTensor:
         return self._binary(OpType.SUB, other, "sub")
 
-    def __rsub__(self, other: "SymbolicTensor | float") -> "SymbolicTensor":
+    def __rsub__(self, other: SymbolicTensor | float) -> SymbolicTensor:
         lhs = self._ensure(other)
         return lhs.__sub__(self)
 
-    def __mul__(self, other: "SymbolicTensor | float") -> "SymbolicTensor":
+    def __mul__(self, other: SymbolicTensor | float) -> SymbolicTensor:
         return self._binary(OpType.MUL, other, "mul")
 
-    def __rmul__(self, other: "SymbolicTensor | float") -> "SymbolicTensor":
+    def __rmul__(self, other: SymbolicTensor | float) -> SymbolicTensor:
         return self.__mul__(other)
 
-    def __truediv__(self, other: "SymbolicTensor | float") -> "SymbolicTensor":
+    def __truediv__(self, other: SymbolicTensor | float) -> SymbolicTensor:
         return self._binary(OpType.DIV, other, "div")
 
-    def __rtruediv__(self, other: "SymbolicTensor | float") -> "SymbolicTensor":
+    def __rtruediv__(self, other: SymbolicTensor | float) -> SymbolicTensor:
         lhs = self._ensure(other)
         return lhs.__truediv__(self)
 
-    def __matmul__(self, other: "SymbolicTensor") -> "SymbolicTensor":
+    def __matmul__(self, other: SymbolicTensor) -> SymbolicTensor:
         return self._binary(OpType.MATMUL, other, "matmul")
 
-    def relu(self) -> "SymbolicTensor":
+    def relu(self) -> SymbolicTensor:
         return self._unary(OpType.RELU, "relu")
 
-    def exp(self) -> "SymbolicTensor":
+    def exp(self) -> SymbolicTensor:
         return self._unary(OpType.EXP, "exp")
 
-    def log(self) -> "SymbolicTensor":
+    def log(self) -> SymbolicTensor:
         return self._unary(OpType.LOG, "log")
 
-    def sigmoid(self) -> "SymbolicTensor":
+    def sigmoid(self) -> SymbolicTensor:
         return self._unary(OpType.SIGMOID, "sigmoid")
 
-    def transpose(self) -> "SymbolicTensor":
+    def transpose(self) -> SymbolicTensor:
         return self._unary(OpType.TRANSPOSE, "transpose")
 
     @property
-    def T(self) -> "SymbolicTensor":
+    def T(self) -> SymbolicTensor:
         return self.transpose()
 
     def sum(
         self, axis: int | tuple[int, ...] | None = None, keepdims: bool = False
-    ) -> "SymbolicTensor":
+    ) -> SymbolicTensor:
         out_shape, out_dtype, axes = infer_reduce(
             OpType.SUM, self.shape, self.dtype, axis=axis, keepdims=keepdims
         )
@@ -128,7 +127,7 @@ class SymbolicTensor:
 
     def mean(
         self, axis: int | tuple[int, ...] | None = None, keepdims: bool = False
-    ) -> "SymbolicTensor":
+    ) -> SymbolicTensor:
         out_shape, out_dtype, axes = infer_reduce(
             OpType.MEAN, self.shape, self.dtype, axis=axis, keepdims=keepdims
         )
@@ -142,7 +141,7 @@ class SymbolicTensor:
         )
         return SymbolicTensor(graph=self.graph, node=n)
 
-    def mark_as_output(self) -> "SymbolicTensor":
+    def mark_as_output(self) -> SymbolicTensor:
         self.graph._graph.mark_output(self.node.id)
         return self
 
@@ -150,12 +149,12 @@ class SymbolicTensor:
 class StaticCompiledGraph:
     """Compiled static graph executable."""
 
-    def __init__(self, module: JITModule, input_names: List[str]) -> None:
+    def __init__(self, module: JITModule, input_names: list[str]) -> None:
         self._module = module
         self._input_names = list(input_names)
 
     @property
-    def input_names(self) -> List[str]:
+    def input_names(self) -> list[str]:
         return list(self._input_names)
 
     def run(self, *inputs: np.ndarray, **named_inputs: np.ndarray) -> np.ndarray:
@@ -183,16 +182,16 @@ class StaticGraph:
 
     def __init__(self) -> None:
         self._graph = Graph()
-        self._input_nodes: List[Node] = []
-        self._input_name_to_id: Dict[str, int] = {}
-        self._compiled: Optional[StaticCompiledGraph] = None
+        self._input_nodes: list[Node] = []
+        self._input_name_to_id: dict[str, int] = {}
+        self._compiled: StaticCompiledGraph | None = None
 
     @property
     def graph(self) -> Graph:
         return self._graph
 
     @property
-    def input_names(self) -> List[str]:
+    def input_names(self) -> list[str]:
         return [n.name for n in self._input_nodes]
 
     def input_id(self, name: str) -> int:

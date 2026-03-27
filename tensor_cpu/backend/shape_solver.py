@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Dict, List
-
 from ..ir.graph import Node
 from ..ir.ops import OpType
 
 
 class ShapeSolverMixin:
-    _sym: Dict[int, tuple[str, ...]]
-    _sym_str: Dict[int, tuple[str, ...]]
+    _sym: dict[int, tuple[str, ...]]
+    _sym_str: dict[int, tuple[str, ...]]
 
     @staticmethod
     def _sym_strides_from(dims: tuple[str, ...]) -> tuple[str, ...]:
@@ -31,7 +29,7 @@ class ShapeSolverMixin:
         rp = ("1",) * (rank - len(rhs)) + rhs
         return tuple(r if l == "1" else l for l, r in zip(lp, rp))
 
-    def _build_symbolic_shapes(self, ordered: List[Node], inputs: List[Node]) -> None:
+    def _build_symbolic_shapes(self, ordered: list[Node], inputs: list[Node]) -> None:
         for idx, node in enumerate(inputs):
             dims = tuple(f"in{idx}_d{d}" for d in range(node.rank))
             self._sym[node.id] = dims
@@ -101,7 +99,7 @@ class ShapeSolverMixin:
 
         if node.op_type in (OpType.SUM, OpType.MEAN, OpType.MAX):
             src = self._sym.get(node.inputs[0], ())
-            axes_set = set(int(a) for a in node.attrs.get("axis", ()))
+            axes_set = {int(a) for a in node.attrs.get("axis", ())}
             keepdims = bool(node.attrs.get("keepdims", False))
             dims: list[str] = []
             for i, d in enumerate(src):
@@ -176,7 +174,7 @@ class ShapeSolverMixin:
             dst_strides = self._sym_strides_from(dst_sym)
             src_strides = self._sym_strides_from(src_sym)
             dst_axes = [i for i, d in enumerate(dst_sym) if d != "1"]
-            terms: List[str] = []
+            terms: list[str] = []
             for src_axis, dst_axis in enumerate(dst_axes):
                 coord_expr = (
                     f"(({linear_index_var} / ({dst_strides[dst_axis]})) % ({dst_sym[dst_axis]}))"
@@ -203,7 +201,7 @@ class ShapeSolverMixin:
                 return parts[0]
             return " * ".join(f"({d})" for d in parts)
 
-        terms: List[str] = []
+        terms: list[str] = []
         for axis, src_d in enumerate(aligned_src):
             if src_d == "1":
                 continue
@@ -232,7 +230,7 @@ class ShapeSolverMixin:
         dst_strides_sym = self._sym_str.get(dst_node.id, ())
 
         keepdims = bool(dst_node.attrs.get("keepdims", False))
-        terms: List[str] = []
+        terms: list[str] = []
         dst_axis = 0
         for src_axis, src_d in enumerate(src_sym):
             if src_axis in axes_set:

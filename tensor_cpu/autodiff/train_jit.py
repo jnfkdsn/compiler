@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Dict, Iterable, List
 
 import numpy as np
 
@@ -23,7 +23,7 @@ class GradLayoutEntry:
 
 def _build_backward_state(
     forward_graph: Graph,
-) -> tuple[List[Node], Node, Graph, Dict[int, Node], Dict[int, Node]]:
+) -> tuple[list[Node], Node, Graph, dict[int, Node], dict[int, Node]]:
     ordered = forward_graph.topological_sort()
     if not ordered:
         raise ValueError("Forward graph is empty.")
@@ -39,8 +39,8 @@ def _build_backward_state(
         )
 
     graph = Graph()
-    old_to_new: Dict[int, Node] = {}
-    grads: Dict[int, Node] = {}
+    old_to_new: dict[int, Node] = {}
+    grads: dict[int, Node] = {}
 
     for node in ordered:
         cloned = graph.add_node(
@@ -81,14 +81,14 @@ def _build_backward_state(
     return ordered, loss_node, graph, old_to_new, grads
 
 
-def build_backward_graph(forward_graph: Graph, *, wrt_input_ids: Iterable[int]) -> Dict[int, Graph]:
+def build_backward_graph(forward_graph: Graph, *, wrt_input_ids: Iterable[int]) -> dict[int, Graph]:
     """Build per-target backward graphs for selected forward INPUT node ids."""
 
     _, _, shared_graph, old_to_new, grads = _build_backward_state(forward_graph)
-    out: Dict[int, Graph] = {}
-    for wrt_id in set(int(v) for v in wrt_input_ids):
+    out: dict[int, Graph] = {}
+    for wrt_id in {int(v) for v in wrt_input_ids}:
         graph = Graph()
-        node_map: Dict[int, Node] = {}
+        node_map: dict[int, Node] = {}
         for node in shared_graph.topological_sort():
             cloned = graph.add_node(
                 op_type=node.op_type,
@@ -119,13 +119,13 @@ def build_joint_backward_graph(
     forward_graph: Graph,
     *,
     wrt_input_ids: Iterable[int],
-) -> tuple[Graph, List[GradLayoutEntry]]:
+) -> tuple[Graph, list[GradLayoutEntry]]:
     """Build a shared backward graph and pack all requested gradients into one output tensor."""
 
     _, _, graph, old_to_new, grads = _build_backward_state(forward_graph)
 
-    layout: List[GradLayoutEntry] = []
-    packed_inputs: List[int] = []
+    layout: list[GradLayoutEntry] = []
+    packed_inputs: list[int] = []
     offset = 0
     target_ids = [int(v) for v in wrt_input_ids]
     packed_dtype = "float32"
@@ -272,13 +272,13 @@ def compile_adam_update_kernels(
 class CompiledTrainingStep:
     loss_module: JITModule
     grad_module: JITModule
-    grad_layout: List[GradLayoutEntry]
-    param_input_ids: List[int]
+    grad_layout: list[GradLayoutEntry]
+    param_input_ids: list[int]
 
-    def run_loss_and_grads(self, *inputs: np.ndarray) -> tuple[float, Dict[int, np.ndarray]]:
+    def run_loss_and_grads(self, *inputs: np.ndarray) -> tuple[float, dict[int, np.ndarray]]:
         loss = float(self.loss_module.run(*inputs))
         packed = np.asarray(self.grad_module.run(*inputs), dtype=np.float32).reshape(-1)
-        grads: Dict[int, np.ndarray] = {}
+        grads: dict[int, np.ndarray] = {}
         for entry in self.grad_layout:
             view = packed[entry.start : entry.end]
             grads[entry.input_id] = view.reshape(entry.shape).copy()

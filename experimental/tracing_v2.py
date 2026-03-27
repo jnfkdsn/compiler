@@ -14,10 +14,10 @@ from __future__ import annotations
 import ast
 import dis
 import inspect
-import sys
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from enum import Enum, auto
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
+from enum import Enum
+from typing import Any
 
 
 class ControlFlowOp(Enum):
@@ -37,12 +37,12 @@ class ControlFlowNode:
     """A node representing control flow in the graph."""
 
     op_type: ControlFlowOp
-    condition: Optional["TracedValue"] = None
-    true_branch: Optional[List["GraphNode"]] = None
-    false_branch: Optional[List["GraphNode"]] = None
-    body: Optional[List["GraphNode"]] = None
-    loop_var: Optional[str] = None
-    iterable: Optional["TracedValue"] = None
+    condition: TracedValue | None = None
+    true_branch: list[GraphNode] | None = None
+    false_branch: list[GraphNode] | None = None
+    body: list[GraphNode] | None = None
+    loop_var: str | None = None
+    iterable: TracedValue | None = None
 
 
 @dataclass(slots=True)
@@ -51,7 +51,7 @@ class TracedValue:
 
     name: str
     node_id: int
-    shape: Tuple[int, ...] = ()
+    shape: tuple[int, ...] = ()
     dtype: str = "float32"
     is_symbolic: bool = False
 
@@ -62,28 +62,28 @@ class GraphNode:
 
     id: int
     op: str
-    inputs: List[int] = field(default_factory=list)
-    outputs: List[int] = field(default_factory=list)
-    attrs: Dict[str, Any] = field(default_factory=dict)
-    control_flow: Optional[ControlFlowNode] = None
+    inputs: list[int] = field(default_factory=list)
+    outputs: list[int] = field(default_factory=list)
+    attrs: dict[str, Any] = field(default_factory=dict)
+    control_flow: ControlFlowNode | None = None
 
 
 @dataclass
 class TracingState:
     """State maintained during AST/bytecode tracing."""
 
-    scope: Dict[str, TracedValue] = field(default_factory=dict)
-    graph_nodes: List[GraphNode] = field(default_factory=list)
+    scope: dict[str, TracedValue] = field(default_factory=dict)
+    graph_nodes: list[GraphNode] = field(default_factory=list)
     next_id: int = 0
-    current_loop: Optional[str] = None
-    loop_vars: Set[str] = field(default_factory=set)
+    current_loop: str | None = None
+    loop_vars: set[str] = field(default_factory=set)
 
     def new_id(self) -> int:
         self.next_id += 1
         return self.next_id
 
     def get_or_create(
-        self, name: str, shape: Tuple[int, ...] = (), dtype: str = "float32"
+        self, name: str, shape: tuple[int, ...] = (), dtype: str = "float32"
     ) -> TracedValue:
         if name not in self.scope:
             node_id = self.new_id()
@@ -97,10 +97,10 @@ class TracingState:
     def create_computed(
         self,
         op: str,
-        inputs: List[TracedValue],
-        shape: Tuple[int, ...] = (),
+        inputs: list[TracedValue],
+        shape: tuple[int, ...] = (),
         dtype: str = "float32",
-        attrs: Optional[Dict[str, Any]] = None,
+        attrs: dict[str, Any] | None = None,
     ) -> TracedValue:
         node_id = self.new_id()
         value = TracedValue(f"_{op}_{node_id}", node_id, shape, dtype)
@@ -118,9 +118,9 @@ class ASTTracer(ast.NodeVisitor):
 
     def __init__(self, state: TracingState) -> None:
         self.state = state
-        self.current_value: Optional[TracedValue] = None
+        self.current_value: TracedValue | None = None
 
-    def trace_function(self, func: Callable, *args, **kwargs) -> List[GraphNode]:
+    def trace_function(self, func: Callable, *args, **kwargs) -> list[GraphNode]:
         """Trace a function and return the captured graph nodes."""
         source = inspect.getsource(func)
         tree = ast.parse(source)
@@ -403,12 +403,12 @@ class BytecodeTracer:
 
     def __init__(self) -> None:
         self.state = TracingState()
-        self._stack: List[TracedValue] = []
-        self._block_stack: List[Tuple[str, int]] = []
+        self._stack: list[TracedValue] = []
+        self._block_stack: list[tuple[str, int]] = []
 
-    def trace_function(self, func: Callable, *args, **kwargs) -> List[GraphNode]:
+    def trace_function(self, func: Callable, *args, **kwargs) -> list[GraphNode]:
         """Trace a function using bytecode analysis."""
-        for i, (name, param) in enumerate(inspect.signature(func).parameters.items()):
+        for i, (name, _param) in enumerate(inspect.signature(func).parameters.items()):
             if i < len(args):
                 shape = getattr(args[i], "shape", ())
                 dtype = getattr(args[i], "dtype", "float32")
@@ -433,7 +433,7 @@ class BytecodeTracer:
             i += 1
 
     def _process_instruction(
-        self, instr: dis.Instruction, instructions: List[dis.Instruction], idx: int
+        self, instr: dis.Instruction, instructions: list[dis.Instruction], idx: int
     ) -> None:
         """Process a single bytecode instruction."""
         opname = instr.opname
@@ -539,7 +539,7 @@ class BytecodeTracer:
 
         elif opname == "FOR_ITER":
             if self._stack:
-                iterator = self._stack[-1]
+                self._stack[-1]
                 loop_var = f"_loop_var_{self.state.new_id()}"
                 result = self.state.get_or_create(loop_var)
                 self._stack.append(result)
@@ -566,7 +566,7 @@ class BytecodeTracer:
             self._stack.append(result)
 
 
-def trace_function(func: Callable, method: str = "bytecode") -> List[GraphNode]:
+def trace_function(func: Callable, method: str = "bytecode") -> list[GraphNode]:
     """Trace a function and return the captured graph nodes.
 
     Args:
@@ -585,7 +585,7 @@ def trace_function(func: Callable, method: str = "bytecode") -> List[GraphNode]:
         return tracer.trace_function(func)
 
 
-def trace_method(obj: Any, method_name: str, method: str = "bytecode") -> List[GraphNode]:
+def trace_method(obj: Any, method_name: str, method: str = "bytecode") -> list[GraphNode]:
     """Trace a method and return the captured graph nodes."""
     func = getattr(obj, method_name)
     return trace_function(func, method)

@@ -140,6 +140,8 @@ ignore_missing_imports = true
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+
+[tool.ruff.lint]
 select = [
     "E",
     "W",
@@ -152,14 +154,21 @@ select = [
     "SIM",
 ]
 ignore = [
-    "E501",
-    "B008",
-    "B905",
+    "E501",    # line too long (handled by black)
+    "B008",    # function call in default arg
+    "B905",    # zip without strict
+    "ARG001",  # unused function argument (common in compiler callbacks/visitors)
+    "ARG002",  # unused method argument (common in base class / interface methods)
+    "E741",    # ambiguous variable name (l, O, I) — common in math/tensor code
+    "SIM108",  # ternary instead of if-else (readability preference)
+    "SIM105",  # suppressible-exception
+    "UP007",   # non-pep604-annotation-union (compat)
 ]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
 "examples/test/*" = ["ARG"]
+"experimental/*" = ["F401", "F821", "F811", "ARG"]
 
 [tool.bandit]
 exclude_dirs = ["examples/test", ".venv"]

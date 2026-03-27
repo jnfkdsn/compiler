@@ -2,20 +2,18 @@
 
 from __future__ import annotations
 
-from typing import Dict, List
-
 from ..ir.graph import Node
 from .common import CppFor, CppLine, CppStmt
 
 
 class ElementwiseLoweringMixin:
-    def _emit_sub(self, node: Node, names: Dict[int, str]) -> List[str]:
+    def _emit_sub(self, node: Node, names: dict[int, str]) -> list[str]:
         return self._emit_binary_elementwise(node=node, names=names, op="-")
 
-    def _emit_add(self, node: Node, names: Dict[int, str]) -> List[str]:
+    def _emit_add(self, node: Node, names: dict[int, str]) -> list[str]:
         return self._emit_binary_elementwise(node=node, names=names, op="+")
 
-    def _emit_binary_elementwise(self, *, node: Node, names: Dict[int, str], op: str) -> List[str]:
+    def _emit_binary_elementwise(self, *, node: Node, names: dict[int, str], op: str) -> list[str]:
         lhs_node = self.graph.get_node(node.inputs[0])
         rhs_node = self.graph.get_node(node.inputs[1])
         lhs = names[node.inputs[0]]
@@ -35,13 +33,13 @@ class ElementwiseLoweringMixin:
             ]
         )
 
-    def _emit_mul(self, node: Node, names: Dict[int, str]) -> List[str]:
+    def _emit_mul(self, node: Node, names: dict[int, str]) -> list[str]:
         return self._emit_binary_elementwise(node=node, names=names, op="*")
 
-    def _emit_div(self, node: Node, names: Dict[int, str]) -> List[str]:
+    def _emit_div(self, node: Node, names: dict[int, str]) -> list[str]:
         return self._emit_binary_elementwise(node=node, names=names, op="/")
 
-    def _emit_eq(self, node: Node, names: Dict[int, str]) -> List[str]:
+    def _emit_eq(self, node: Node, names: dict[int, str]) -> list[str]:
         lhs_node = self.graph.get_node(node.inputs[0])
         rhs_node = self.graph.get_node(node.inputs[1])
         lhs = names[node.inputs[0]]
@@ -68,7 +66,7 @@ class ElementwiseLoweringMixin:
             ]
         )
 
-    def _emit_relu(self, node: Node, names: Dict[int, str]) -> List[str]:
+    def _emit_relu(self, node: Node, names: dict[int, str]) -> list[str]:
         src = names[node.inputs[0]]
         dst = names[node.id]
         total = self._numel_expr(node)
@@ -88,7 +86,7 @@ class ElementwiseLoweringMixin:
             ]
         )
 
-    def _emit_relu_grad(self, node: Node, names: Dict[int, str]) -> List[str]:
+    def _emit_relu_grad(self, node: Node, names: dict[int, str]) -> list[str]:
         src_node = self.graph.get_node(node.inputs[0])
         grad_node = self.graph.get_node(node.inputs[1])
         src = names[src_node.id]
@@ -109,7 +107,7 @@ class ElementwiseLoweringMixin:
             ]
         )
 
-    def _emit_broadcast_to(self, node: Node, names: Dict[int, str]) -> List[str]:
+    def _emit_broadcast_to(self, node: Node, names: dict[int, str]) -> list[str]:
         src_node = self.graph.get_node(node.inputs[0])
         src = names[src_node.id]
         dst = names[node.id]
@@ -126,9 +124,9 @@ class ElementwiseLoweringMixin:
             ]
         )
 
-    def _emit_pack(self, node: Node, names: Dict[int, str]) -> List[str]:
+    def _emit_pack(self, node: Node, names: dict[int, str]) -> list[str]:
         dst = names[node.id]
-        lines: List[str] = ["long long pack_offset = 0;"]
+        lines: list[str] = ["long long pack_offset = 0;"]
         for input_id in node.inputs:
             src_node = self.graph.get_node(input_id)
             src = names[input_id]
@@ -148,7 +146,7 @@ class ElementwiseLoweringMixin:
             lines.append(f"pack_offset += {numel};")
         return lines
 
-    def _emit_exp(self, node: Node, names: Dict[int, str]) -> List[str]:
+    def _emit_exp(self, node: Node, names: dict[int, str]) -> list[str]:
         src = names[node.inputs[0]]
         dst = names[node.id]
         total = self._numel_expr(node)
@@ -163,7 +161,7 @@ class ElementwiseLoweringMixin:
             ]
         )
 
-    def _emit_log(self, node: Node, names: Dict[int, str]) -> List[str]:
+    def _emit_log(self, node: Node, names: dict[int, str]) -> list[str]:
         src = names[node.inputs[0]]
         dst = names[node.id]
         total = self._numel_expr(node)
@@ -178,7 +176,7 @@ class ElementwiseLoweringMixin:
             ]
         )
 
-    def _emit_sigmoid(self, node: Node, names: Dict[int, str]) -> List[str]:
+    def _emit_sigmoid(self, node: Node, names: dict[int, str]) -> list[str]:
         src = names[node.inputs[0]]
         dst = names[node.id]
         total = self._numel_expr(node)
@@ -198,7 +196,7 @@ class ElementwiseLoweringMixin:
             ]
         )
 
-    def _emit_transpose(self, node: Node, names: Dict[int, str]) -> List[str]:
+    def _emit_transpose(self, node: Node, names: dict[int, str]) -> list[str]:
         src_node = self.graph.get_node(node.inputs[0])
         src = names[src_node.id]
         dst = names[node.id]
@@ -220,7 +218,7 @@ class ElementwiseLoweringMixin:
         dst_strides = self._sym_str.get(node.id, ())
         src_strides = self._sym_str.get(src_node.id, ())
 
-        body: List[CppStmt] = [CppLine("long long src_idx = 0;"), CppLine("long long rem = i;")]
+        body: list[CppStmt] = [CppLine("long long src_idx = 0;"), CppLine("long long rem = i;")]
         for d in range(rank):
             src_dim_idx = rank - 1 - d
             body.append(

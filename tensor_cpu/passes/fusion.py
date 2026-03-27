@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from ..ir.graph import Graph
 
 
-def fuse_matmul_bias_relu(graph: "Graph") -> int:
+def fuse_matmul_bias_relu(graph: Graph) -> int:
     """Fuse MatMul + Add (+ ReLU) into one node when pattern matches.
 
     Returns the number of fused subgraphs.
@@ -86,7 +86,7 @@ def fuse_matmul_bias_relu(graph: "Graph") -> int:
     return fused_count
 
 
-def _count_uses(graph: "Graph", node_id: int) -> int:
+def _count_uses(graph: Graph, node_id: int) -> int:
     count = 0
     for node in graph.nodes():
         for src in node.inputs:

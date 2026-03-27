@@ -6,18 +6,11 @@ enabling the final code generation stage.
 
 from __future__ import annotations
 
-from typing import List, Optional
-
 from .cpp_ast import (
     Assign,
     BinaryOp,
-)
-from .cpp_ast import Block as CppBlock
-from .cpp_ast import (
     Call,
-    Cast,
     Expr,
-    ExprStmt,
     ForLoop,
     FunctionDecl,
     Identifier,
@@ -25,12 +18,12 @@ from .cpp_ast import (
     Index,
     Literal,
     Program,
-    Return,
     Stmt,
     TernaryOp,
     UnaryOp,
     VarDecl,
 )
+from .cpp_ast import Block as CppBlock
 from .tir import (
     Allocate,
     Binary,
@@ -43,11 +36,9 @@ from .tir import (
     IfStmt,
     IRModule,
     LetStmt,
-    LoopAnnotation,
     PrimFunc,
     Ternary,
     TIRExpr,
-    TIRStmt,
     TIRVisitor,
     Unary,
     Var,
@@ -94,7 +85,7 @@ class TIRToCppConverter(TIRVisitor):
         idx = self._compute_linear_index(node.buffer.name, node.indices)
         return Index(base, idx)
 
-    def _compute_linear_index(self, buffer_name: str, indices: List[TIRExpr]) -> Expr:
+    def _compute_linear_index(self, buffer_name: str, indices: list[TIRExpr]) -> Expr:
         if len(indices) == 1:
             return indices[0].accept(self)
         result = indices[0].accept(self)
@@ -207,7 +198,7 @@ class TIRToCppConverter(TIRVisitor):
         )
 
     def visit_ir_module(self, node: IRModule) -> Program:
-        decls: List[Stmt] = []
+        decls: list[Stmt] = []
         for func in node.functions.values():
             decls.append(func.accept(self))
         return Program(decls=decls)

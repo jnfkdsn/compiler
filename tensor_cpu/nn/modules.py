@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import List, Sequence
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -14,8 +14,8 @@ class Module:
 
     training: bool = True
 
-    def parameters(self) -> List[Tensor]:
-        params: List[Tensor] = []
+    def parameters(self) -> list[Tensor]:
+        params: list[Tensor] = []
         for value in self.__dict__.values():
             if isinstance(value, Tensor) and value.requires_grad:
                 params.append(value)
@@ -33,17 +33,17 @@ class Module:
         for p in self.parameters():
             p.zero_grad()
 
-    def train(self, mode: bool = True) -> "Module":
+    def train(self, mode: bool = True) -> Module:
         self.training = bool(mode)
         for child in self.children():
             child.train(mode)
         return self
 
-    def eval(self) -> "Module":
+    def eval(self) -> Module:
         return self.train(False)
 
-    def children(self) -> List["Module"]:
-        out: List[Module] = []
+    def children(self) -> list[Module]:
+        out: list[Module] = []
         for value in self.__dict__.values():
             if isinstance(value, Module):
                 out.append(value)
@@ -230,7 +230,7 @@ class MLP(Module):
         activation: str = "relu",
         out_activation: str | None = None,
     ) -> None:
-        self.layers: List[Module] = []
+        self.layers: list[Module] = []
         dims = [in_features, *hidden_features, out_features]
 
         for i in range(len(dims) - 1):
@@ -248,8 +248,8 @@ class MLP(Module):
             out = layer(out)
         return out
 
-    def parameters(self) -> List[Tensor]:
-        params: List[Tensor] = []
+    def parameters(self) -> list[Tensor]:
+        params: list[Tensor] = []
         for layer in self.layers:
             params.extend(layer.parameters())
         return params
@@ -267,8 +267,8 @@ class Sequential(Module):
             out = layer(out)
         return out
 
-    def parameters(self) -> List[Tensor]:
-        params: List[Tensor] = []
+    def parameters(self) -> list[Tensor]:
+        params: list[Tensor] = []
         for layer in self.layers:
             params.extend(layer.parameters())
         return params

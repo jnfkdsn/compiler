@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Set
-
 
 def dead_code_elimination(graph) -> int:
     """Remove nodes not reachable from graph outputs."""
-    live: Set[int] = set()
+    live: set[int] = set()
 
     def visit(node_id: int) -> None:
         if node_id in live or not graph.has_node(node_id):

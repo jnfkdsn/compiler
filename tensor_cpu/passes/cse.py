@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Dict, Tuple
-
 from ..ir.graph import Graph
 from ..ir.ops import OpType
 
 
-def _node_key(node) -> Tuple:
+def _node_key(node) -> tuple:
     # Create a hashable key representing node semantics: op_type, inputs, attrs, shape, dtype
     return (
         node.op_type,
@@ -24,7 +22,7 @@ def cse(graph: Graph) -> int:
 
     Returns number of nodes removed.
     """
-    seen: Dict[Tuple, int] = {}
+    seen: dict[tuple, int] = {}
     removed = []
 
     for node in list(graph.topological_sort()):

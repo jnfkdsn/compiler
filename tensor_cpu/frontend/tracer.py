@@ -18,7 +18,7 @@ class TraceContext:
     def __init__(self) -> None:
         self.graph = Graph()
 
-    def __enter__(self) -> "TraceContext":
+    def __enter__(self) -> TraceContext:
         dispatcher.set_tracing(True, self.graph)
         return self
 

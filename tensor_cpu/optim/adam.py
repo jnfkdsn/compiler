@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Iterable, List
+from collections.abc import Iterable
 
 import numpy as np
 
@@ -20,7 +20,7 @@ class Adam:
         eps: float = 1e-8,
         weight_decay: float = 0.0,
     ) -> None:
-        self.params: List[Tensor] = list(params)
+        self.params: list[Tensor] = list(params)
         self.lr = float(lr)
         self.beta1 = float(betas[0])
         self.beta2 = float(betas[1])

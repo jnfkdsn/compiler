@@ -49,9 +49,7 @@ def test_cse_simple():
     c = g.add_node(
         op_type=OpType.CONST, name="one", shape=(), dtype="float32", attrs={"value": 1.0}
     )
-    a1 = g.add_node(
-        op_type=OpType.ADD, name="add1", inputs=[x.id, c.id], shape=(4,), dtype="float32"
-    )
+    g.add_node(op_type=OpType.ADD, name="add1", inputs=[x.id, c.id], shape=(4,), dtype="float32")
     a2 = g.add_node(
         op_type=OpType.ADD, name="add2", inputs=[x.id, c.id], shape=(4,), dtype="float32"
     )

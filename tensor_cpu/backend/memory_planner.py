@@ -3,27 +3,26 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List
 
 from ..ir.graph import Node
 
 
 @dataclass(slots=True)
 class MemoryPlannerState:
-    names: Dict[int, str]
+    names: dict[int, str]
     declared_slots: set[str] = field(default_factory=set)
-    workspace_slots: List[tuple[str, str]] = field(default_factory=list)
-    workspace_sym: List[tuple[str, tuple[str, ...]]] = field(default_factory=list)
-    temp_owner: Dict[int, str] = field(default_factory=dict)
-    free_slots: Dict[tuple[str, ...], List[str]] = field(default_factory=dict)
+    workspace_slots: list[tuple[str, str]] = field(default_factory=list)
+    workspace_sym: list[tuple[str, tuple[str, ...]]] = field(default_factory=list)
+    temp_owner: dict[int, str] = field(default_factory=dict)
+    free_slots: dict[tuple[str, ...], list[str]] = field(default_factory=dict)
     slot_counter: int = 0
 
 
 class MemoryPlannerMixin:
     enable_memory_planner: bool
 
-    def _compute_use_count(self, ordered: List[Node]) -> Dict[int, int]:
-        use_count: Dict[int, int] = {n.id: 0 for n in ordered}
+    def _compute_use_count(self, ordered: list[Node]) -> dict[int, int]:
+        use_count: dict[int, int] = {n.id: 0 for n in ordered}
         for node in ordered:
             for in_id in node.inputs:
                 if in_id in use_count:
@@ -62,7 +61,7 @@ class MemoryPlannerMixin:
         state.workspace_sym.append((slot_name, sym_key))
 
     def _release_consumed_storage(
-        self, *, node: Node, use_count: Dict[int, int], state: MemoryPlannerState
+        self, *, node: Node, use_count: dict[int, int], state: MemoryPlannerState
     ) -> None:
         if not self.enable_memory_planner:
             return

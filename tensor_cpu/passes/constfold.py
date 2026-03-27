@@ -3,9 +3,6 @@
 from __future__ import annotations
 
 import math
-from typing import List
-
-import numpy as np
 
 from ..ir.graph import Graph
 from ..ir.ops import OpType
@@ -16,7 +13,7 @@ def constant_fold(graph: Graph) -> int:
 
     Returns the number of folded nodes.
     """
-    folded: List[int] = []
+    folded: list[int] = []
 
     def is_const(n_id: int) -> bool:
         if not graph.has_node(n_id):

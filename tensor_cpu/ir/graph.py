@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 from .ops import OpType
 
-Shape = Tuple[int, ...]
+Shape = tuple[int, ...]
 
 
 @dataclass(slots=True)
@@ -17,10 +17,10 @@ class Node:
     id: int
     op_type: OpType
     name: str
-    inputs: List[int]
+    inputs: list[int]
     shape: Shape
     dtype: str
-    attrs: Dict[str, object] = field(default_factory=dict)
+    attrs: dict[str, object] = field(default_factory=dict)
     rank: int = 0
     numel: int = 1
     strides: Shape = ()
@@ -30,20 +30,20 @@ class Graph:
     """Directed acyclic graph used by the compiler frontend."""
 
     def __init__(self) -> None:
-        self._nodes: Dict[int, Node] = {}
-        self._order: List[int] = []  # 图优化
+        self._nodes: dict[int, Node] = {}
+        self._order: list[int] = []  # 图优化
         self._next_id = 0
-        self.output_ids: List[int] = []
+        self.output_ids: list[int] = []
 
     def add_node(
         self,
         *,
         op_type: OpType,
         name: str,
-        inputs: Optional[Sequence[int]] = None,
+        inputs: Sequence[int] | None = None,
         shape: Shape = (),
         dtype: str = "float32",
-        attrs: Optional[Dict[str, object]] = None,
+        attrs: dict[str, object] | None = None,
     ) -> Node:
         """Create and register a new graph node."""
         normalized_shape = tuple(shape)
@@ -92,18 +92,18 @@ class Graph:
             self._nodes.pop(node_id, None)
         self._order = [node_id for node_id in self._order if node_id not in to_remove]
 
-    def topological_sort(self) -> List[Node]:  # node拓扑排序
+    def topological_sort(self) -> list[Node]:  # node拓扑排序
         """Return nodes in topological order using Kahn's algorithm."""
-        indegree: Dict[int, int] = {node.id: 0 for node in self.nodes()}
-        outgoing: Dict[int, List[int]] = {node.id: [] for node in self.nodes()}
+        indegree: dict[int, int] = {node.id: 0 for node in self.nodes()}
+        outgoing: dict[int, list[int]] = {node.id: [] for node in self.nodes()}
 
         for node in self.nodes():
             for src_id in node.inputs:
                 indegree[node.id] += 1
                 outgoing[src_id].append(node.id)
 
-        ready: List[int] = [node_id for node_id, deg in indegree.items() if deg == 0]
-        ordered: List[Node] = []
+        ready: list[int] = [node_id for node_id, deg in indegree.items() if deg == 0]
+        ordered: list[Node] = []
 
         while ready:
             current = ready.pop(0)

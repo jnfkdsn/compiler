@@ -7,14 +7,14 @@ comparing outputs against NumPy reference implementations.
 from __future__ import annotations
 
 import sys
-from typing import Callable, Tuple
+from collections.abc import Callable
 
 import numpy as np
 import pytest
 
 sys.path.insert(0, ".")
 
-from tensor_cpu import AbiStatus, JITEngine, Tensor, TraceContext, decode_abi_status, optimize_graph
+from tensor_cpu import JITEngine, Tensor, TraceContext, optimize_graph
 
 
 def assert_allclose(
@@ -58,7 +58,7 @@ class TestBinaryOps:
         op_name: str,
         op_func: Callable,
         numpy_func: Callable,
-        shape: Tuple[int, ...],
+        shape: tuple[int, ...],
     ) -> None:
         """Test binary element-wise operations against NumPy."""
         np.random.seed(42)
@@ -71,7 +71,7 @@ class TestBinaryOps:
         with TraceContext() as tc:
             xt = Tensor.from_numpy(x, name="x")
             yt = Tensor.from_numpy(y, name="y")
-            out = op_func(xt, yt).mark_as_output()
+            op_func(xt, yt).mark_as_output()
             graph = tc.graph
 
         engine = JITEngine(use_hpc_template=False)
@@ -89,7 +89,7 @@ class TestBinaryOps:
             ((2, 4, 8), (8, 6)),
         ],
     )
-    def test_matmul(self, shape_a: Tuple[int, ...], shape_b: Tuple[int, ...]) -> None:
+    def test_matmul(self, shape_a: tuple[int, ...], shape_b: tuple[int, ...]) -> None:
         """Test matrix multiplication."""
         np.random.seed(42)
         a = np.random.randn(*shape_a).astype(np.float32)
@@ -98,7 +98,7 @@ class TestBinaryOps:
         with TraceContext() as tc:
             at = Tensor.from_numpy(a, name="a")
             bt = Tensor.from_numpy(b, name="b")
-            out = (at @ bt).mark_as_output()
+            (at @ bt).mark_as_output()
             graph = tc.graph
 
         engine = JITEngine(use_hpc_template=False)
@@ -127,7 +127,7 @@ class TestUnaryOps:
         op_name: str,
         op_func: Callable,
         numpy_func: Callable,
-        shape: Tuple[int, ...],
+        shape: tuple[int, ...],
     ) -> None:
         """Test unary operations against NumPy."""
         np.random.seed(42)
@@ -138,7 +138,7 @@ class TestUnaryOps:
 
         with TraceContext() as tc:
             xt = Tensor.from_numpy(x, name="x")
-            out = op_func(xt).mark_as_output()
+            op_func(xt).mark_as_output()
             graph = tc.graph
 
         engine = JITEngine(use_hpc_template=False)
@@ -175,9 +175,9 @@ class TestReduceOps:
         with TraceContext() as tc:
             xt = Tensor.from_numpy(x, name="x")
             if axis is None:
-                out = getattr(xt, op_name)().mark_as_output()
+                getattr(xt, op_name)().mark_as_output()
             else:
-                out = getattr(xt, op_name)(axis=axis).mark_as_output()
+                getattr(xt, op_name)(axis=axis).mark_as_output()
             graph = tc.graph
 
         engine = JITEngine(use_hpc_template=False)
@@ -206,7 +206,7 @@ class TestFusion:
             xt = Tensor.from_numpy(x, name="x")
             wt = Tensor.from_numpy(w, name="w")
             bt = Tensor.from_numpy(b, name="b")
-            out = ((xt @ wt) + bt).relu().mark_as_output()
+            ((xt @ wt) + bt).relu().mark_as_output()
             graph = tc.graph
 
         stats = optimize_graph(graph)
@@ -234,7 +234,7 @@ class TestSymbolicShapes:
             xt = Tensor.from_numpy(x_trace, name="x")
             wt = Tensor.from_numpy(w, name="w")
             bt = Tensor.from_numpy(b, name="b")
-            out = ((xt @ wt) + bt).relu().mark_as_output()
+            ((xt @ wt) + bt).relu().mark_as_output()
             graph = tc.graph
 
         optimize_graph(graph)
@@ -262,7 +262,7 @@ class TestABIGuards:
         with TraceContext() as tc:
             xt = Tensor.from_numpy(x, name="x")
             yt = Tensor.from_numpy(y, name="y")
-            out = (xt + yt).mark_as_output()
+            (xt + yt).mark_as_output()
             graph = tc.graph
 
         engine = JITEngine(use_hpc_template=False)
@@ -279,7 +279,7 @@ class TestABIGuards:
 
         with TraceContext() as tc:
             xt = Tensor.from_numpy(x, name="x")
-            out = xt.relu().mark_as_output()
+            xt.relu().mark_as_output()
             graph = tc.graph
 
         engine = JITEngine(use_hpc_template=False)
@@ -301,7 +301,7 @@ class TestGradient:
         with TraceContext() as tc:
             xt = Tensor.from_numpy(x, name="x")
             grad_t = Tensor.from_numpy(grad, name="grad")
-            out = xt.relu_grad(grad_t).mark_as_output()
+            xt.relu_grad(grad_t).mark_as_output()
             graph = tc.graph
 
         engine = JITEngine(use_hpc_template=False)
@@ -334,7 +334,7 @@ class TestEndToEnd:
             b2t = Tensor.from_numpy(b2, name="b2")
 
             h = (xt @ w1t + b1t).relu()
-            out = (h @ w2t + b2t).mark_as_output()
+            (h @ w2t + b2t).mark_as_output()
             graph = tc.graph
 
         optimize_graph(graph)
@@ -369,7 +369,7 @@ class TestPerformance:
         with TraceContext() as tc:
             at = Tensor.from_numpy(a, name="a")
             bt = Tensor.from_numpy(b, name="b")
-            out = (at @ bt).mark_as_output()
+            (at @ bt).mark_as_output()
             graph = tc.graph
 
         engine = JITEngine(use_hpc_template=True)

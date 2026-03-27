@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Dict, List
-
 from ..ir.graph import Node
 from ..ir.ops import OpType
 from .common import CppFor, CppLine, CppStmt
@@ -13,7 +11,7 @@ class MatmulLoweringMixin:
     use_hpc_template: bool
     _requires_exact_input_shapes: bool
 
-    def _emit_matmul(self, node: Node, names: Dict[int, str]) -> List[str]:
+    def _emit_matmul(self, node: Node, names: dict[int, str]) -> list[str]:
         a_node = self.graph.get_node(node.inputs[0])
         b_node = self.graph.get_node(node.inputs[1])
         a = names[a_node.id]
@@ -81,7 +79,7 @@ class MatmulLoweringMixin:
         mat_b = f"(({k_dim}) * ({n_dim}))"
         mat_c = f"(({m_dim}) * ({n_dim}))"
 
-        body: List[CppStmt] = [
+        body: list[CppStmt] = [
             CppLine("long long a_off = 0;"),
             CppLine("long long b_off = 0;"),
             CppLine("long long rem = batch;"),
@@ -132,7 +130,7 @@ class MatmulLoweringMixin:
             ]
         )
 
-    def _emit_fused_matmul(self, node: Node, names: Dict[int, str]) -> List[str]:
+    def _emit_fused_matmul(self, node: Node, names: dict[int, str]) -> list[str]:
         a_node = self.graph.get_node(node.inputs[0])
         b_node = self.graph.get_node(node.inputs[1])
         bias_node = self.graph.get_node(node.inputs[2])
@@ -154,7 +152,7 @@ class MatmulLoweringMixin:
         ctype = self._cpp_type(node)
         zero = self._cpp_zero(node)
 
-        inner_body: List[CppStmt] = [
+        inner_body: list[CppStmt] = [
             CppLine(f"{ctype} acc = {zero};"),
             CppFor(
                 init="long long kk = 0",
@@ -186,7 +184,7 @@ class MatmulLoweringMixin:
             ]
         )
 
-    def _emit_hpc_matmul(self, a: str, b: str, c: str, m: int, n: int, k: int) -> List[str]:
+    def _emit_hpc_matmul(self, a: str, b: str, c: str, m: int, n: int, k: int) -> list[str]:
         return [
             "{",
             "constexpr int BM = 64;",

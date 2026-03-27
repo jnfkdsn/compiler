@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Union
+from typing import Union
 
 
 @dataclass(slots=True)
@@ -26,14 +26,14 @@ class CppFor:
     init: str
     cond: str
     inc: str
-    body: List["CppStmt"]
+    body: list[CppStmt]
 
 
 CppStmt = Union[CppLine, CppFor]
 
 
-def render_cpp_stmts(stmts: List[CppStmt], indent: int = 0) -> List[str]:
-    lines: List[str] = []
+def render_cpp_stmts(stmts: list[CppStmt], indent: int = 0) -> list[str]:
+    lines: list[str] = []
     pad = " " * indent
     for stmt in stmts:
         if isinstance(stmt, CppLine):

@@ -9,15 +9,12 @@ import numpy as np
 sys.path.insert(0, ".")
 
 from tensor_cpu import (
-    AbiStatus,
     JITEngine,
     Tensor,
     TraceContext,
-    decode_abi_status,
     jit,
     optimize_graph,
 )
-from tensor_cpu.runtime import JITCompileError
 
 # ---------------------------------------------------------------------------
 # helpers
@@ -40,7 +37,7 @@ def build_add_graph(x_np, y_np):
     with TraceContext() as tc:
         x = Tensor.from_numpy(x_np, name="x")
         y = Tensor.from_numpy(y_np, name="y")
-        out = (x + y).mark_as_output()
+        (x + y).mark_as_output()
         return tc.graph
 
 
@@ -214,7 +211,7 @@ def test_symbolic_shapes():
     with TraceContext() as tc:
         xt = Tensor.from_numpy(x, name="x")
         wt = Tensor.from_numpy(w, name="w")
-        out = (xt @ wt).mark_as_output()
+        (xt @ wt).mark_as_output()
         graph = tc.graph
 
     engine = JITEngine()

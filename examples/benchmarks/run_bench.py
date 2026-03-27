@@ -17,8 +17,9 @@ import platform
 import shutil
 import sys
 import time
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -38,7 +39,7 @@ class EngineConfig:
     enable_memory_planner: bool = True
     passes: tuple[str, ...] = ()
 
-    def to_metadata(self) -> Dict[str, Any]:
+    def to_metadata(self) -> dict[str, Any]:
         return {
             "use_hpc_template": self.use_hpc_template,
             "enable_memory_planner": self.enable_memory_planner,
@@ -50,8 +51,8 @@ class EngineConfig:
 class RuntimeControls:
     """Execution environment controls for reproducibility."""
 
-    threads: Optional[int] = None
-    cpu_affinity: Optional[tuple[int, ...]] = None
+    threads: int | None = None
+    cpu_affinity: tuple[int, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -61,11 +62,11 @@ class CaseSpec:
     key: str
     label: str
     kind: str
-    shape: Tuple[int, ...]
+    shape: tuple[int, ...]
     warmup: int
     repeats: int
     engine: EngineConfig
-    build: Callable[[], tuple[Any, tuple[np.ndarray, ...], np.ndarray, Dict[str, Any]]]
+    build: Callable[[], tuple[Any, tuple[np.ndarray, ...], np.ndarray, dict[str, Any]]]
 
 
 @dataclass(frozen=True)
@@ -83,18 +84,18 @@ class BenchmarkResult:
     """Result of a single benchmark."""
 
     name: str
-    shape: Tuple[int, ...]
+    shape: tuple[int, ...]
     time_ms: float
     compile_ms: float
     median_ms: float
     p95_ms: float
     max_abs_err: float
-    gflops: Optional[float] = None
-    bandwidth_gbps: Optional[float] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    gflops: float | None = None
+    bandwidth_gbps: float | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_payload(self) -> Dict[str, Any]:
-        payload: Dict[str, Any] = {
+    def to_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
             "time_ms": self.time_ms,
             "compile_ms": self.compile_ms,
             "median_ms": self.median_ms,
@@ -110,7 +111,7 @@ class BenchmarkResult:
         return payload
 
 
-def _parse_cpu_affinity(spec: Optional[str]) -> Optional[tuple[int, ...]]:
+def _parse_cpu_affinity(spec: str | None) -> tuple[int, ...] | None:
     if spec is None or not spec.strip():
         return None
     cpus: set[int] = set()
@@ -132,8 +133,8 @@ def _parse_cpu_affinity(spec: Optional[str]) -> Optional[tuple[int, ...]]:
     return tuple(sorted(cpus))
 
 
-def _apply_runtime_controls(controls: RuntimeControls) -> Dict[str, Any]:
-    applied: Dict[str, Any] = {
+def _apply_runtime_controls(controls: RuntimeControls) -> dict[str, Any]:
+    applied: dict[str, Any] = {
         "requested_threads": controls.threads,
         "requested_cpu_affinity": list(controls.cpu_affinity) if controls.cpu_affinity else None,
         "applied_cpu_affinity": None,
@@ -160,13 +161,13 @@ def _apply_runtime_controls(controls: RuntimeControls) -> Dict[str, Any]:
     return applied
 
 
-def _current_cpu_affinity() -> Optional[list[int]]:
+def _current_cpu_affinity() -> list[int] | None:
     if hasattr(os, "sched_getaffinity"):
         return sorted(os.sched_getaffinity(0))
     return None
 
 
-def _collect_environment(runtime_controls: Dict[str, Any]) -> Dict[str, Any]:
+def _collect_environment(runtime_controls: dict[str, Any]) -> dict[str, Any]:
     compiler = None
     for candidate in ("clang++", "g++", "cl"):
         if shutil.which(candidate):
@@ -188,7 +189,7 @@ def _collect_environment(runtime_controls: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def _summarize_times(times_ms: Sequence[float]) -> Tuple[float, float, float]:
+def _summarize_times(times_ms: Sequence[float]) -> tuple[float, float, float]:
     mean_ms = float(sum(times_ms) / len(times_ms))
     median_ms = float(np.median(times_ms))
     p95_ms = float(np.percentile(times_ms, 95))
@@ -293,7 +294,7 @@ def _build_matmul_case(
 ) -> CaseSpec:
     m, k, n = shape
 
-    def build() -> tuple[Any, tuple[np.ndarray, ...], np.ndarray, Dict[str, Any]]:
+    def build() -> tuple[Any, tuple[np.ndarray, ...], np.ndarray, dict[str, Any]]:
         rng = np.random.default_rng(42)
         a = rng.standard_normal((m, k), dtype=np.float32)
         b = rng.standard_normal((k, n), dtype=np.float32)
@@ -328,7 +329,7 @@ def _build_fused_case(
 ) -> CaseSpec:
     m, k, n = shape
 
-    def build() -> tuple[Any, tuple[np.ndarray, ...], np.ndarray, Dict[str, Any]]:
+    def build() -> tuple[Any, tuple[np.ndarray, ...], np.ndarray, dict[str, Any]]:
         rng = np.random.default_rng(42)
         x = rng.standard_normal((m, k), dtype=np.float32)
         w = rng.standard_normal((k, n), dtype=np.float32)
@@ -364,7 +365,7 @@ def _build_elementwise_case(
     repeats: int,
     engine: EngineConfig,
 ) -> CaseSpec:
-    def build() -> tuple[Any, tuple[np.ndarray, ...], np.ndarray, Dict[str, Any]]:
+    def build() -> tuple[Any, tuple[np.ndarray, ...], np.ndarray, dict[str, Any]]:
         rng = np.random.default_rng(42)
         x = rng.standard_normal(shape, dtype=np.float32)
         y = rng.standard_normal(shape, dtype=np.float32)
@@ -414,7 +415,7 @@ def _build_chain_case(
     repeats: int,
     engine: EngineConfig,
 ) -> CaseSpec:
-    def build() -> tuple[Any, tuple[np.ndarray, ...], np.ndarray, Dict[str, Any]]:
+    def build() -> tuple[Any, tuple[np.ndarray, ...], np.ndarray, dict[str, Any]]:
         rng = np.random.default_rng(42)
         x = rng.standard_normal(shape, dtype=np.float32)
         y = rng.standard_normal(shape, dtype=np.float32)
@@ -464,7 +465,7 @@ def _build_reduce_case(
     repeats: int,
     engine: EngineConfig,
 ) -> CaseSpec:
-    def build() -> tuple[Any, tuple[np.ndarray, ...], np.ndarray, Dict[str, Any]]:
+    def build() -> tuple[Any, tuple[np.ndarray, ...], np.ndarray, dict[str, Any]]:
         rng = np.random.default_rng(42)
         x = rng.standard_normal(shape, dtype=np.float32)
         with TraceContext() as tc:
@@ -493,7 +494,7 @@ def _build_reduce_case(
     )
 
 
-def _profile_sizes(quick: bool) -> Dict[str, Any]:
+def _profile_sizes(quick: bool) -> dict[str, Any]:
     if quick:
         return {
             "warmup": 1,
@@ -688,8 +689,8 @@ def _experiment_suite(quick: bool) -> tuple[list[CaseSpec], list[ExperimentSpec]
     return cases, experiments
 
 
-def _run_suite(cases: Iterable[CaseSpec]) -> Dict[str, Dict[str, Any]]:
-    results: Dict[str, Dict[str, Any]] = {}
+def _run_suite(cases: Iterable[CaseSpec]) -> dict[str, dict[str, Any]]:
+    results: dict[str, dict[str, Any]] = {}
     for case in cases:
         result = _run_case(case)
         results[case.key] = result.to_payload()
@@ -709,10 +710,10 @@ def _run_suite(cases: Iterable[CaseSpec]) -> Dict[str, Dict[str, Any]]:
 
 
 def _build_experiment_summaries(
-    results: Dict[str, Dict[str, Any]],
+    results: dict[str, dict[str, Any]],
     experiments: Sequence[ExperimentSpec],
-) -> Dict[str, Dict[str, Any]]:
-    summaries: Dict[str, Dict[str, Any]] = {}
+) -> dict[str, dict[str, Any]]:
+    summaries: dict[str, dict[str, Any]] = {}
     for experiment in experiments:
         baseline = results.get(experiment.baseline_key)
         candidate = results.get(experiment.candidate_key)
@@ -740,8 +741,8 @@ def _build_experiment_summaries(
 
 def run_all_benchmarks(
     quick: bool, include_experiments: bool
-) -> tuple[Dict[str, Any], Dict[str, Any]]:
-    results: Dict[str, Any] = {}
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    results: dict[str, Any] = {}
     print("=" * 60)
     print("Tensor CPU AI Compiler Performance Benchmarks")
     print("=" * 60)
@@ -749,7 +750,7 @@ def run_all_benchmarks(
     print("\n[Core Workloads]")
     results.update(_run_suite(_base_suite(quick)))
 
-    experiment_summaries: Dict[str, Any] = {}
+    experiment_summaries: dict[str, Any] = {}
     if include_experiments:
         print("\n[Optimization Experiments]")
         experiment_cases, experiment_specs = _experiment_suite(quick)
@@ -767,13 +768,13 @@ def run_all_benchmarks(
 
 
 def build_benchmark_report(
-    results: Dict[str, Any],
+    results: dict[str, Any],
     *,
     profile: str,
     include_experiments: bool,
-    runtime_controls: Dict[str, Any],
-    experiments: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    runtime_controls: dict[str, Any],
+    experiments: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     return {
         "schema_version": 2,
         "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
@@ -801,15 +802,15 @@ def build_benchmark_report(
     }
 
 
-def _unwrap_results(payload: Dict[str, Any]) -> Dict[str, Any]:
+def _unwrap_results(payload: dict[str, Any]) -> dict[str, Any]:
     if "results" in payload and isinstance(payload["results"], dict):
         return payload["results"]
     return payload
 
 
 def _comparison_policy(
-    payload: Dict[str, Any], threshold_override: float | None
-) -> Tuple[str, float]:
+    payload: dict[str, Any], threshold_override: float | None
+) -> tuple[str, float]:
     comparison = payload.get("comparison", {})
     metric = comparison.get("metric", "median_ms")
     threshold = threshold_override
@@ -819,10 +820,10 @@ def _comparison_policy(
 
 
 def compare_with_baseline(
-    current: Dict[str, Any],
-    baseline: Dict[str, Any],
+    current: dict[str, Any],
+    baseline: dict[str, Any],
     threshold: float | None = None,
-) -> List[str]:
+) -> list[str]:
     regressions = []
 
     current_results = _unwrap_results(current)
@@ -895,7 +896,7 @@ def main() -> int:
         print(f"\nResults written to {args.output}")
 
     if args.compare:
-        with open(args.compare, "r", encoding="utf-8") as handle:
+        with open(args.compare, encoding="utf-8") as handle:
             baseline = json.load(handle)
         regressions = compare_with_baseline(report, baseline, args.threshold)
         if regressions:

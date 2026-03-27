@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Dict, List
-
 from ..ir.graph import Node
 from ..ir.ops import OpType
 from .common import CppStmt, render_cpp_stmts
@@ -29,10 +27,10 @@ class OpLoweringMixin(ElementwiseLoweringMixin, ReduceLoweringMixin, MatmulLower
     def _cpp_vec_type(node: Node) -> str:
         return "double" if node.dtype == "float64" else "float"
 
-    def _emit_structured(self, stmts: List[CppStmt]) -> List[str]:
+    def _emit_structured(self, stmts: list[CppStmt]) -> list[str]:
         return render_cpp_stmts(stmts)
 
-    def _emit_node(self, node: Node, names: Dict[int, str]) -> List[str]:
+    def _emit_node(self, node: Node, names: dict[int, str]) -> list[str]:
         if node.op_type == OpType.ADD:
             return self._emit_add(node, names)
         if node.op_type == OpType.SUB:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Iterable, List
+from collections.abc import Iterable
 
 import numpy as np
 
@@ -21,13 +21,13 @@ class SGD:
         nesterov: bool = False,
         dampening: float = 0.0,
     ) -> None:
-        self.params: List[Tensor] = list(params)
+        self.params: list[Tensor] = list(params)
         self.lr = float(lr)
         self.momentum = float(momentum)
         self.weight_decay = float(weight_decay)
         self.nesterov = bool(nesterov)
         self.dampening = float(dampening)
-        self._velocity: List[np.ndarray | None] = [None] * len(self.params)
+        self._velocity: list[np.ndarray | None] = [None] * len(self.params)
 
         if self.nesterov and self.momentum <= 0.0:
             raise ValueError("Nesterov momentum requires momentum > 0")

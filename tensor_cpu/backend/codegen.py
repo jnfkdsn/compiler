@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Dict, List
-
 from ..ir.graph import Graph, Node
 from ..ir.ops import OpType
 from .common import GeneratedKernel
@@ -22,8 +20,8 @@ class CppCodegen(ShapeSolverMixin, MemoryPlannerMixin, OpLoweringMixin, CppEmitt
         self.graph = graph
         self.use_hpc_template = use_hpc_template
         self.enable_memory_planner = enable_memory_planner
-        self._sym: Dict[int, tuple[str, ...]] = {}
-        self._sym_str: Dict[int, tuple[str, ...]] = {}
+        self._sym: dict[int, tuple[str, ...]] = {}
+        self._sym_str: dict[int, tuple[str, ...]] = {}
         self._compute_dtype: str | None = None
         self._requires_exact_input_shapes = False
 
@@ -35,9 +33,9 @@ class CppCodegen(ShapeSolverMixin, MemoryPlannerMixin, OpLoweringMixin, CppEmitt
         self._compute_dtype = output_node.dtype or "float32"
         self._build_symbolic_shapes(ordered, inputs)
 
-        declarations: List[str] = []
-        body: List[str] = []
-        names: Dict[int, str] = {}
+        declarations: list[str] = []
+        body: list[str] = []
+        names: dict[int, str] = {}
         ctype = "double" if self._compute_dtype == "float64" else "float"
 
         for idx, node in enumerate(inputs):
@@ -89,7 +87,7 @@ class CppCodegen(ShapeSolverMixin, MemoryPlannerMixin, OpLoweringMixin, CppEmitt
             ),
         )
 
-    def _resolve_output(self, ordered: List[Node]) -> Node:
+    def _resolve_output(self, ordered: list[Node]) -> Node:
         if len(self.graph.output_ids) > 1:
             raise ValueError("Only single-output graphs are supported on the stable codegen path.")
         if self.graph.output_ids:

@@ -6,8 +6,8 @@ to the ``dispatcher`` module, keeping this file focused on the Tensor API.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, Optional, Set
 
 import numpy as np
 
@@ -29,7 +29,7 @@ from .ir.shape_inference import normalize_reduce_axes
 # ---------------------------------------------------------------------------
 
 
-def _dispatch_binary(op_type: OpType, lhs: "Tensor", rhs: "Tensor") -> "Tensor":
+def _dispatch_binary(op_type: OpType, lhs: Tensor, rhs: Tensor) -> Tensor:
     if lhs.data is None or rhs.data is None:
         raise RuntimeError(f"Eager tensor data is missing for {op_type.value}.")
     result_data = dispatcher.eager_binary(op_type, lhs.data, rhs.data)
@@ -64,7 +64,7 @@ def _dispatch_binary(op_type: OpType, lhs: "Tensor", rhs: "Tensor") -> "Tensor":
     return out
 
 
-def _dispatch_unary(op_type: OpType, src: "Tensor") -> "Tensor":
+def _dispatch_unary(op_type: OpType, src: Tensor) -> Tensor:
     if src.data is None:
         raise RuntimeError(f"Eager tensor data is missing for {op_type.value}.")
     result_data = dispatcher.eager_unary(op_type, src.data)
@@ -101,10 +101,10 @@ def _dispatch_unary(op_type: OpType, src: "Tensor") -> "Tensor":
 
 def _dispatch_reduce(
     op_type: OpType,
-    src: "Tensor",
+    src: Tensor,
     axis: int | tuple[int, ...] | None,
     keepdims: bool,
-) -> "Tensor":
+) -> Tensor:
     if src.data is None:
         raise RuntimeError(f"Eager tensor data is missing for {op_type.value}.")
 
@@ -155,12 +155,12 @@ def _dispatch_reduce(
 class Tensor:
     """A lightweight tensor with eager execution and optional graph node."""
 
-    data: Optional[np.ndarray]  # eager
-    node: Optional[object]  # tracing
-    name: Optional[str] = None
+    data: np.ndarray | None  # eager
+    node: object | None  # tracing
+    name: str | None = None
     requires_grad: bool = False
-    grad: Optional[np.ndarray] = None
-    _prev: Set["Tensor"] = field(default_factory=set)
+    grad: np.ndarray | None = None
+    _prev: set[Tensor] = field(default_factory=set)
     _backward: Callable[[], None] = lambda: None
 
     def __hash__(self) -> int:
@@ -169,9 +169,9 @@ class Tensor:
     @staticmethod
     def from_numpy(
         array: np.ndarray,
-        name: Optional[str] = None,
+        name: str | None = None,
         requires_grad: bool = False,
-    ) -> "Tensor":
+    ) -> Tensor:
         arr = np.asarray(array, dtype=np.float32)
         node = None
         if dispatcher.is_tracing():
@@ -183,7 +183,7 @@ class Tensor:
         return Tensor(data=arr, node=node, name=name, requires_grad=requires_grad)
 
     @staticmethod
-    def scalar(value: float, dtype: str = "float32", requires_grad: bool = False) -> "Tensor":
+    def scalar(value: float, dtype: str = "float32", requires_grad: bool = False) -> Tensor:
         arr = np.asarray(value, dtype=dtype)
         node = None
         if dispatcher.is_tracing():
@@ -213,74 +213,74 @@ class Tensor:
 
     # --- Binary ops (delegated to dispatcher) ---
 
-    def __add__(self, other: "Tensor | float") -> "Tensor":
+    def __add__(self, other: Tensor | float) -> Tensor:
         return _dispatch_binary(OpType.ADD, self, self._ensure_tensor(other))
 
-    def __radd__(self, other: "Tensor | float") -> "Tensor":
+    def __radd__(self, other: Tensor | float) -> Tensor:
         return self.__add__(other)
 
-    def __mul__(self, other: "Tensor | float") -> "Tensor":
+    def __mul__(self, other: Tensor | float) -> Tensor:
         return _dispatch_binary(OpType.MUL, self, self._ensure_tensor(other))
 
-    def __rmul__(self, other: "Tensor | float") -> "Tensor":
+    def __rmul__(self, other: Tensor | float) -> Tensor:
         return self.__mul__(other)
 
-    def __neg__(self) -> "Tensor":
+    def __neg__(self) -> Tensor:
         return self * -1.0
 
-    def __sub__(self, other: "Tensor | float") -> "Tensor":
+    def __sub__(self, other: Tensor | float) -> Tensor:
         return _dispatch_binary(OpType.SUB, self, self._ensure_tensor(other))
 
-    def __rsub__(self, other: "Tensor | float") -> "Tensor":
+    def __rsub__(self, other: Tensor | float) -> Tensor:
         return self._ensure_tensor(other).__sub__(self)
 
-    def __truediv__(self, other: "Tensor | float") -> "Tensor":
+    def __truediv__(self, other: Tensor | float) -> Tensor:
         return _dispatch_binary(OpType.DIV, self, self._ensure_tensor(other))
 
-    def __rtruediv__(self, other: "Tensor | float") -> "Tensor":
+    def __rtruediv__(self, other: Tensor | float) -> Tensor:
         return self._ensure_tensor(other).__truediv__(self)
 
-    def __matmul__(self, other: "Tensor") -> "Tensor":
+    def __matmul__(self, other: Tensor) -> Tensor:
         return _dispatch_binary(OpType.MATMUL, self, other)
 
     # --- Unary ops ---
 
-    def transpose(self) -> "Tensor":
+    def transpose(self) -> Tensor:
         return _dispatch_unary(OpType.TRANSPOSE, self)
 
     @property
-    def T(self) -> "Tensor":
+    def T(self) -> Tensor:
         return self.transpose()
 
-    def relu(self) -> "Tensor":
+    def relu(self) -> Tensor:
         return _dispatch_unary(OpType.RELU, self)
 
-    def relu_grad(self, grad: "Tensor | float") -> "Tensor":
+    def relu_grad(self, grad: Tensor | float) -> Tensor:
         return _dispatch_binary(OpType.RELU_GRAD, self, self._ensure_tensor(grad))
 
-    def exp(self) -> "Tensor":
+    def exp(self) -> Tensor:
         return _dispatch_unary(OpType.EXP, self)
 
-    def log(self) -> "Tensor":
+    def log(self) -> Tensor:
         return _dispatch_unary(OpType.LOG, self)
 
-    def sigmoid(self) -> "Tensor":
+    def sigmoid(self) -> Tensor:
         return _dispatch_unary(OpType.SIGMOID, self)
 
     # --- Reduce ops ---
 
-    def sum(self, axis: int | tuple[int, ...] | None = None, keepdims: bool = False) -> "Tensor":
+    def sum(self, axis: int | tuple[int, ...] | None = None, keepdims: bool = False) -> Tensor:
         return _dispatch_reduce(OpType.SUM, self, axis, keepdims)
 
-    def mean(self, axis: int | tuple[int, ...] | None = None, keepdims: bool = False) -> "Tensor":
+    def mean(self, axis: int | tuple[int, ...] | None = None, keepdims: bool = False) -> Tensor:
         return _dispatch_reduce(OpType.MEAN, self, axis, keepdims)
 
-    def max(self, axis: int | tuple[int, ...] | None = None, keepdims: bool = False) -> "Tensor":
+    def max(self, axis: int | tuple[int, ...] | None = None, keepdims: bool = False) -> Tensor:
         return _dispatch_reduce(OpType.MAX, self, axis, keepdims)
 
     # --- Compound ops ---
 
-    def softmax(self, axis: int = -1) -> "Tensor":
+    def softmax(self, axis: int = -1) -> Tensor:
         x_shifted = self - self.max(axis=axis, keepdims=True)
         exp_x = x_shifted.exp()
         return exp_x / exp_x.sum(axis=axis, keepdims=True)
@@ -294,7 +294,7 @@ class Tensor:
         topo: list[Tensor] = []
         visited: set[Tensor] = set()
 
-        def build(v: "Tensor") -> None:
+        def build(v: Tensor) -> None:
             if v in visited:
                 return
             visited.add(v)
@@ -310,13 +310,13 @@ class Tensor:
     def zero_grad(self) -> None:
         self.grad = None
 
-    def mark_as_output(self) -> "Tensor":
+    def mark_as_output(self) -> Tensor:
         if dispatcher.is_tracing() and self.node is not None:
             mark_output(self.node)
         return self
 
     @staticmethod
-    def _ensure_tensor(value: "Tensor | float") -> "Tensor":
+    def _ensure_tensor(value: Tensor | float) -> Tensor:
         if isinstance(value, Tensor):
             return value
         return Tensor.scalar(value)

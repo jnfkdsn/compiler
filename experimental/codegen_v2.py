@@ -14,7 +14,6 @@ This design enables:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Tuple
 
 from tensor_cpu.abi import AbiStatus
 from tensor_cpu.ir.graph import Graph, Node
@@ -45,9 +44,9 @@ from .ir import (
 class GeneratedKernel:
     source: str
     entry: str
-    output_sym_shape: Tuple[str, ...] = ()
-    input_ranks: Tuple[int, ...] = ()
-    workspace_slots: Tuple[Tuple[str, Tuple[str, ...]], ...] = ()
+    output_sym_shape: tuple[str, ...] = ()
+    input_ranks: tuple[int, ...] = ()
+    workspace_slots: tuple[tuple[str, tuple[str, ...]], ...] = ()
 
 
 class LayeredCodegen:
@@ -59,8 +58,8 @@ class LayeredCodegen:
         self.graph = graph
         self.use_hpc_template = use_hpc_template
         self.enable_memory_planner = enable_memory_planner
-        self._sym: Dict[int, Tuple[str, ...]] = {}
-        self._sym_str: Dict[int, Tuple[str, ...]] = {}
+        self._sym: dict[int, tuple[str, ...]] = {}
+        self._sym_str: dict[int, tuple[str, ...]] = {}
         self._compute_dtype = None
 
     @staticmethod
@@ -76,7 +75,7 @@ class LayeredCodegen:
         return "-DBL_MAX" if node.dtype == "float64" else "-FLT_MAX"
 
     @staticmethod
-    def _sym_strides_from(dims: Tuple[str, ...]) -> Tuple[str, ...]:
+    def _sym_strides_from(dims: tuple[str, ...]) -> tuple[str, ...]:
         if not dims:
             return ()
         strides = ["1"] * len(dims)
@@ -88,13 +87,13 @@ class LayeredCodegen:
         return tuple(strides)
 
     @staticmethod
-    def _sym_broadcast(lhs: Tuple[str, ...], rhs: Tuple[str, ...]) -> Tuple[str, ...]:
+    def _sym_broadcast(lhs: tuple[str, ...], rhs: tuple[str, ...]) -> tuple[str, ...]:
         rank = max(len(lhs), len(rhs))
         lp = ("1",) * (rank - len(lhs)) + lhs
         rp = ("1",) * (rank - len(rhs)) + rhs
         return tuple(r if l == "1" else l for l, r in zip(lp, rp))
 
-    def _build_symbolic_shapes(self, ordered: List[Node], inputs: List[Node]) -> None:
+    def _build_symbolic_shapes(self, ordered: list[Node], inputs: list[Node]) -> None:
         for idx, node in enumerate(inputs):
             dims = tuple(f"in{idx}_d{d}" for d in range(node.rank))
             self._sym[node.id] = dims
@@ -164,9 +163,9 @@ class LayeredCodegen:
 
         if node.op_type in (OpType.SUM, OpType.MEAN, OpType.MAX):
             src = self._sym.get(node.inputs[0], ())
-            axes_set = set(int(a) for a in node.attrs.get("axis", ()))
+            axes_set = {int(a) for a in node.attrs.get("axis", ())}
             keepdims = bool(node.attrs.get("keepdims", False))
-            dims: List[str] = []
+            dims: list[str] = []
             for i, d in enumerate(src):
                 if i in axes_set:
                     if keepdims:
@@ -183,7 +182,7 @@ class LayeredCodegen:
             target = tuple(int(d) for d in node.attrs.get("target_shape", node.shape))
 
             if src_sym and tuple(d for d in target if d != 1) == tuple(src_node.shape):
-                dims_exp: List[str] = []
+                dims_exp: list[str] = []
                 si = 0
                 for td in target:
                     if td == 1:
@@ -228,8 +227,8 @@ class LayeredCodegen:
         ir_module = lowering.lower()
 
         converter = TIRToCppConverter()
-        for func_name, func in ir_module.functions.items():
-            cpp_func = func.accept(converter)
+        for _func_name, func in ir_module.functions.items():
+            func.accept(converter)
 
         program = self._build_full_program(ordered, inputs, output_node)
         source = generate_cpp(program)
@@ -248,10 +247,9 @@ class LayeredCodegen:
         )
 
     def _build_full_program(
-        self, ordered: List[Node], inputs: List[Node], output_node: Node
+        self, ordered: list[Node], inputs: list[Node], output_node: Node
     ) -> Program:
         max_rank = 8
-        ctype = "double" if self._compute_dtype == "float64" else "float"
 
         includes = [
             Include("algorithm"),
@@ -300,9 +298,8 @@ class LayeredCodegen:
         )
 
     def _build_kernel_body(
-        self, ordered: List[Node], inputs: List[Node], output_node: Node
-    ) -> List:
-        from .ir import Call, ForLoop, TernaryOp
+        self, ordered: list[Node], inputs: list[Node], output_node: Node
+    ) -> list:
 
         ctype = "double" if self._compute_dtype == "float64" else "float"
         stmts = []
@@ -318,7 +315,7 @@ class LayeredCodegen:
             guard = f"if (inputs[{i}].rank != {node.rank}LL) return {int(AbiStatus.INPUT_RANK_MISMATCH_BASE) + i};"
             stmts.append(RawCode(guard))
 
-        for i, node in enumerate(inputs):
+        for i, _node in enumerate(inputs):
             stmts.append(
                 VarDecl(
                     var_type=f"{ctype}*",
@@ -347,15 +344,15 @@ class LayeredCodegen:
             )
         )
 
-        names: Dict[int, str] = {}
+        names: dict[int, str] = {}
         for idx, node in enumerate(inputs):
             names[node.id] = f"arg{idx}"
 
         use_count = self._compute_use_count(ordered)
-        temp_owner: Dict[int, str] = {}
-        free_slots: Dict[Tuple[str, ...], List[str]] = {}
+        temp_owner: dict[int, str] = {}
+        free_slots: dict[tuple[str, ...], list[str]] = {}
         declared_slots: set = set()
-        workspace_slots: List[Tuple[str, str]] = []
+        workspace_slots: list[tuple[str, str]] = []
         slot_counter = 0
 
         for node in ordered:
@@ -417,7 +414,7 @@ class LayeredCodegen:
 
         return stmts
 
-    def _emit_node_stmts(self, node: Node, names: Dict[int, str]) -> List:
+    def _emit_node_stmts(self, node: Node, names: dict[int, str]) -> list:
         from .ir import Call, ForLoop, TernaryOp
 
         ctype = self._cpp_type(node)
@@ -697,7 +694,7 @@ class LayeredCodegen:
 
         return stmts
 
-    def _emit_matmul_stmts(self, node: Node, names: Dict[int, str]) -> List:
+    def _emit_matmul_stmts(self, node: Node, names: dict[int, str]) -> list:
         from .ir import ForLoop
 
         a_node = self.graph.get_node(node.inputs[0])
@@ -796,7 +793,7 @@ class LayeredCodegen:
 
         return [i_loop]
 
-    def _emit_fused_matmul_stmts(self, node: Node, names: Dict[int, str]) -> List:
+    def _emit_fused_matmul_stmts(self, node: Node, names: dict[int, str]) -> list:
         from .ir import ForLoop
 
         a_node = self.graph.get_node(node.inputs[0])
@@ -915,7 +912,7 @@ class LayeredCodegen:
 
         return [i_loop]
 
-    def _emit_transpose_stmts(self, node: Node, names: Dict[int, str]) -> List:
+    def _emit_transpose_stmts(self, node: Node, names: dict[int, str]) -> list:
         from .ir import ForLoop
 
         src_node = self.graph.get_node(node.inputs[0])
@@ -981,7 +978,7 @@ class LayeredCodegen:
             )
         ]
 
-    def _emit_reduce_stmts(self, node: Node, names: Dict[int, str]) -> List:
+    def _emit_reduce_stmts(self, node: Node, names: dict[int, str]) -> list:
         from .ir import ForLoop
 
         src_node = self.graph.get_node(node.inputs[0])
@@ -1115,15 +1112,15 @@ class LayeredCodegen:
 
         return stmts
 
-    def _compute_use_count(self, ordered: List[Node]) -> Dict[int, int]:
-        use_count: Dict[int, int] = {n.id: 0 for n in ordered}
+    def _compute_use_count(self, ordered: list[Node]) -> dict[int, int]:
+        use_count: dict[int, int] = {n.id: 0 for n in ordered}
         for node in ordered:
             for in_id in node.inputs:
                 if in_id in use_count:
                     use_count[in_id] += 1
         return use_count
 
-    def _resolve_output(self, ordered: List[Node]) -> Node:
+    def _resolve_output(self, ordered: list[Node]) -> Node:
         if self.graph.output_ids:
             return self.graph.get_node(self.graph.output_ids[-1])
         if not ordered:
@@ -1157,7 +1154,7 @@ class LayeredCodegen:
             dst_strides = self._sym_strides_from(dst_sym)
             src_strides = self._sym_strides_from(src_sym)
             dst_axes = [i for i, d in enumerate(dst_sym) if d != "1"]
-            terms: List[str] = []
+            terms: list[str] = []
             for src_axis, dst_axis in enumerate(dst_axes):
                 coord_expr = (
                     f"(({linear_index_var} / ({dst_strides[dst_axis]})) % ({dst_sym[dst_axis]}))"
@@ -1176,7 +1173,7 @@ class LayeredCodegen:
 
         aligned_src = ("1",) * (len(dst_sym) - len(src_sym)) + src_sym
 
-        def _suffix_product_sym(dims: Tuple[str, ...], start: int) -> str:
+        def _suffix_product_sym(dims: tuple[str, ...], start: int) -> str:
             parts = dims[start:]
             if not parts:
                 return "1"
@@ -1184,7 +1181,7 @@ class LayeredCodegen:
                 return parts[0]
             return " * ".join(f"({d})" for d in parts)
 
-        terms: List[str] = []
+        terms: list[str] = []
         for axis, src_d in enumerate(aligned_src):
             if src_d == "1":
                 continue
@@ -1201,7 +1198,7 @@ class LayeredCodegen:
         return " + ".join(terms)
 
     def _reduce_dst_index_expr(
-        self, *, src_node: Node, dst_node: Node, axes: Tuple[int, ...], idx_var: str
+        self, *, src_node: Node, dst_node: Node, axes: tuple[int, ...], idx_var: str
     ) -> str:
         dst_sym = self._sym.get(dst_node.id, ())
         if not dst_sym:
@@ -1212,7 +1209,7 @@ class LayeredCodegen:
         src_strides_sym = self._sym_str.get(src_node.id, ())
         dst_strides_sym = self._sym_str.get(dst_node.id, ())
 
-        terms: List[str] = []
+        terms: list[str] = []
         dst_axis = 0
         for src_axis, src_d in enumerate(src_sym):
             if src_axis in axes_set:
@@ -1231,17 +1228,17 @@ class LayeredCodegen:
         return " + ".join(terms)
 
     def _compute_workspace_slots(
-        self, ordered: List[Node], inputs: List[Node]
-    ) -> Tuple[Tuple[str, Tuple[str, ...]], ...]:
-        names: Dict[int, str] = {}
+        self, ordered: list[Node], inputs: list[Node]
+    ) -> tuple[tuple[str, tuple[str, ...]], ...]:
+        names: dict[int, str] = {}
         for idx, node in enumerate(inputs):
             names[node.id] = f"arg{idx}"
 
         use_count = self._compute_use_count(ordered)
-        temp_owner: Dict[int, str] = {}
-        free_slots: Dict[Tuple[str, ...], List[str]] = {}
+        temp_owner: dict[int, str] = {}
+        free_slots: dict[tuple[str, ...], list[str]] = {}
         declared_slots: set = set()
-        workspace_sym: List[Tuple[str, Tuple[str, ...]]] = []
+        workspace_sym: list[tuple[str, tuple[str, ...]]] = []
         slot_counter = 0
 
         for node in ordered:

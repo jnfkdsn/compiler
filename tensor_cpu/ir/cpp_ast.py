@@ -13,14 +13,14 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any
 
 
 class ASTNode(ABC):
     """Base class for all AST nodes."""
 
     @abstractmethod
-    def accept(self, visitor: "ASTVisitor") -> Any:
+    def accept(self, visitor: ASTVisitor) -> Any:
         """Accept a visitor to process this node."""
         pass
 
@@ -43,7 +43,7 @@ class Identifier(Expr):
 
     name: str
 
-    def accept(self, visitor: "ASTVisitor") -> Any:
+    def accept(self, visitor: ASTVisitor) -> Any:
         return visitor.visit_identifier(self)
 
 
@@ -51,10 +51,10 @@ class Identifier(Expr):
 class Literal(Expr):
     """A literal value (number, string, etc.)."""
 
-    value: Union[str, int, float]
-    dtype: Optional[str] = None
+    value: str | int | float
+    dtype: str | None = None
 
-    def accept(self, visitor: "ASTVisitor") -> Any:
+    def accept(self, visitor: ASTVisitor) -> Any:
         return visitor.visit_literal(self)
 
 
@@ -66,7 +66,7 @@ class BinaryOp(Expr):
     op: str
     rhs: Expr
 
-    def accept(self, visitor: "ASTVisitor") -> Any:
+    def accept(self, visitor: ASTVisitor) -> Any:
         return visitor.visit_binary_op(self)
 
 
@@ -77,7 +77,7 @@ class UnaryOp(Expr):
     op: str
     operand: Expr
 
-    def accept(self, visitor: "ASTVisitor") -> Any:
+    def accept(self, visitor: ASTVisitor) -> Any:
         return visitor.visit_unary_op(self)
 
 
@@ -89,7 +89,7 @@ class TernaryOp(Expr):
     true_expr: Expr
     false_expr: Expr
 
-    def accept(self, visitor: "ASTVisitor") -> Any:
+    def accept(self, visitor: ASTVisitor) -> Any:
         return visitor.visit_ternary_op(self)
 
 
@@ -98,9 +98,9 @@ class Call(Expr):
     """Function call: func(args...)."""
 
     func: str
-    args: List[Expr] = field(default_factory=list)
+    args: list[Expr] = field(default_factory=list)
 
-    def accept(self, visitor: "ASTVisitor") -> Any:
+    def accept(self, visitor: ASTVisitor) -> Any:
         return visitor.visit_call(self)
 
 
@@ -111,7 +111,7 @@ class Index(Expr):
     base: Expr
     index: Expr
 
-    def accept(self, visitor: "ASTVisitor") -> Any:
+    def accept(self, visitor: ASTVisitor) -> Any:
         return visitor.visit_index(self)
 
 
@@ -122,7 +122,7 @@ class Cast(Expr):
     target_type: str
     expr: Expr
 
-    def accept(self, visitor: "ASTVisitor") -> Any:
+    def accept(self, visitor: ASTVisitor) -> Any:
         return visitor.visit_cast(self)
 
 
@@ -132,7 +132,7 @@ class ExprStmt(Stmt):
 
     expr: Expr
 
-    def accept(self, visitor: "ASTVisitor") -> Any:
+    def accept(self, visitor: ASTVisitor) -> Any:
         return visitor.visit_expr_stmt(self)
 
 
@@ -144,7 +144,7 @@ class Assign(Stmt):
     rhs: Expr
     op: str = "="
 
-    def accept(self, visitor: "ASTVisitor") -> Any:
+    def accept(self, visitor: ASTVisitor) -> Any:
         return visitor.visit_assign(self)
 
 
@@ -154,10 +154,10 @@ class VarDecl(Stmt):
 
     var_type: str
     name: str
-    init: Optional[Expr] = None
+    init: Expr | None = None
     is_const: bool = False
 
-    def accept(self, visitor: "ASTVisitor") -> Any:
+    def accept(self, visitor: ASTVisitor) -> Any:
         return visitor.visit_var_decl(self)
 
 
@@ -165,9 +165,9 @@ class VarDecl(Stmt):
 class Block(Stmt):
     """Block of statements: { stmts... }."""
 
-    stmts: List[Stmt] = field(default_factory=list)
+    stmts: list[Stmt] = field(default_factory=list)
 
-    def accept(self, visitor: "ASTVisitor") -> Any:
+    def accept(self, visitor: ASTVisitor) -> Any:
         return visitor.visit_block(self)
 
 
@@ -175,12 +175,12 @@ class Block(Stmt):
 class ForLoop(Stmt):
     """For loop: for (init; cond; update) body."""
 
-    init: Optional[Stmt] = None
-    cond: Optional[Expr] = None
-    update: Optional[Stmt] = None
+    init: Stmt | None = None
+    cond: Expr | None = None
+    update: Stmt | None = None
     body: Stmt = field(default_factory=lambda: Block())
 
-    def accept(self, visitor: "ASTVisitor") -> Any:
+    def accept(self, visitor: ASTVisitor) -> Any:
         return visitor.visit_for_loop(self)
 
 
@@ -191,7 +191,7 @@ class WhileLoop(Stmt):
     cond: Expr
     body: Stmt = field(default_factory=lambda: Block())
 
-    def accept(self, visitor: "ASTVisitor") -> Any:
+    def accept(self, visitor: ASTVisitor) -> Any:
         return visitor.visit_while_loop(self)
 
 
@@ -201,9 +201,9 @@ class If(Stmt):
 
     cond: Expr
     then_stmt: Stmt
-    else_stmt: Optional[Stmt] = None
+    else_stmt: Stmt | None = None
 
-    def accept(self, visitor: "ASTVisitor") -> Any:
+    def accept(self, visitor: ASTVisitor) -> Any:
         return visitor.visit_if(self)
 
 
@@ -211,9 +211,9 @@ class If(Stmt):
 class Return(Stmt):
     """Return statement: return expr; or return;."""
 
-    expr: Optional[Expr] = None
+    expr: Expr | None = None
 
-    def accept(self, visitor: "ASTVisitor") -> Any:
+    def accept(self, visitor: ASTVisitor) -> Any:
         return visitor.visit_return(self)
 
 
@@ -223,12 +223,12 @@ class FunctionDecl(Stmt):
 
     return_type: str
     name: str
-    params: List[Tuple[str, str]]
+    params: list[tuple[str, str]]
     body: Block
-    linkage: Optional[str] = None
+    linkage: str | None = None
     export: bool = False
 
-    def accept(self, visitor: "ASTVisitor") -> Any:
+    def accept(self, visitor: ASTVisitor) -> Any:
         return visitor.visit_function_decl(self)
 
 
@@ -237,9 +237,9 @@ class StructDecl(Stmt):
     """Struct declaration."""
 
     name: str
-    fields: List[Tuple[str, str]]
+    fields: list[tuple[str, str]]
 
-    def accept(self, visitor: "ASTVisitor") -> Any:
+    def accept(self, visitor: ASTVisitor) -> Any:
         return visitor.visit_struct_decl(self)
 
 
@@ -250,7 +250,7 @@ class Include(Stmt):
     header: str
     is_system: bool = True
 
-    def accept(self, visitor: "ASTVisitor") -> Any:
+    def accept(self, visitor: ASTVisitor) -> Any:
         return visitor.visit_include(self)
 
 
@@ -259,9 +259,9 @@ class Define(Stmt):
     """Preprocessor define."""
 
     name: str
-    value: Optional[str] = None
+    value: str | None = None
 
-    def accept(self, visitor: "ASTVisitor") -> Any:
+    def accept(self, visitor: ASTVisitor) -> Any:
         return visitor.visit_define(self)
 
 
@@ -271,7 +271,7 @@ class Pragma(Stmt):
 
     content: str
 
-    def accept(self, visitor: "ASTVisitor") -> Any:
+    def accept(self, visitor: ASTVisitor) -> Any:
         return visitor.visit_pragma(self)
 
 
@@ -281,7 +281,7 @@ class RawCode(Stmt):
 
     code: str
 
-    def accept(self, visitor: "ASTVisitor") -> Any:
+    def accept(self, visitor: ASTVisitor) -> Any:
         return visitor.visit_raw_code(self)
 
 
@@ -289,12 +289,12 @@ class RawCode(Stmt):
 class Program(ASTNode):
     """A complete C++ program (translation unit)."""
 
-    includes: List[Include] = field(default_factory=list)
-    defines: List[Define] = field(default_factory=list)
-    pragmas: List[Pragma] = field(default_factory=list)
-    decls: List[Stmt] = field(default_factory=list)
+    includes: list[Include] = field(default_factory=list)
+    defines: list[Define] = field(default_factory=list)
+    pragmas: list[Pragma] = field(default_factory=list)
+    decls: list[Stmt] = field(default_factory=list)
 
-    def accept(self, visitor: "ASTVisitor") -> Any:
+    def accept(self, visitor: ASTVisitor) -> Any:
         return visitor.visit_program(self)
 
 

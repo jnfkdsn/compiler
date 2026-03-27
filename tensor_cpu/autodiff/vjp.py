@@ -14,14 +14,14 @@ duplicate definitions elsewhere.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 
 from ..ir.graph import Graph, Node
 from ..ir.ops import OpType
-from ..ir.shape_inference import infer_binary, infer_reduce, infer_unary
+from ..ir.shape_inference import infer_binary, infer_unary
 
 # ====================================================================
 # Unified rule dataclass
@@ -108,7 +108,7 @@ def reduce_to_shape(
     rank_tgt = len(target_shape)
     aligned_tgt = (1,) * (rank_src - rank_tgt) + target_shape
 
-    axes: List[int] = []
+    axes: list[int] = []
     for axis, (sd, td) in enumerate(zip(src_shape, aligned_tgt)):
         if td == 1 and sd != 1:
             axes.append(axis)
@@ -156,8 +156,8 @@ def broadcast_to(graph: Graph, grad: Node, target_shape: tuple[int, ...], name: 
 
 
 def _vjp_add(
-    graph: Graph, gout: Node, inputs: List[Node], out: Node, attrs: dict
-) -> List[Optional[Node]]:
+    graph: Graph, gout: Node, inputs: list[Node], out: Node, attrs: dict
+) -> list[Node | None]:
     lhs, rhs = inputs
     return [
         reduce_to_shape(graph, gout, lhs.shape, f"add_lhs_{out.id}"),
@@ -166,8 +166,8 @@ def _vjp_add(
 
 
 def _vjp_sub(
-    graph: Graph, gout: Node, inputs: List[Node], out: Node, attrs: dict
-) -> List[Optional[Node]]:
+    graph: Graph, gout: Node, inputs: list[Node], out: Node, attrs: dict
+) -> list[Node | None]:
     lhs, rhs = inputs
     gl = reduce_to_shape(graph, gout, lhs.shape, f"sub_lhs_{out.id}")
     minus1 = add_const_scalar(graph, -1.0, dtype=gout.dtype)
@@ -177,8 +177,8 @@ def _vjp_sub(
 
 
 def _vjp_mul(
-    graph: Graph, gout: Node, inputs: List[Node], out: Node, attrs: dict
-) -> List[Optional[Node]]:
+    graph: Graph, gout: Node, inputs: list[Node], out: Node, attrs: dict
+) -> list[Node | None]:
     lhs, rhs = inputs
     gl = add_binary(graph, OpType.MUL, gout, rhs, f"mul_gl_{out.id}")
     gr = add_binary(graph, OpType.MUL, gout, lhs, f"mul_gr_{out.id}")
@@ -189,8 +189,8 @@ def _vjp_mul(
 
 
 def _vjp_div(
-    graph: Graph, gout: Node, inputs: List[Node], out: Node, attrs: dict
-) -> List[Optional[Node]]:
+    graph: Graph, gout: Node, inputs: list[Node], out: Node, attrs: dict
+) -> list[Node | None]:
     lhs, rhs = inputs
     gl = add_binary(graph, OpType.DIV, gout, rhs, f"div_gl_{out.id}")
     rr = add_binary(graph, OpType.MUL, rhs, rhs, f"div_rr_{out.id}")
@@ -205,8 +205,8 @@ def _vjp_div(
 
 
 def _vjp_matmul(
-    graph: Graph, gout: Node, inputs: List[Node], out: Node, attrs: dict
-) -> List[Optional[Node]]:
+    graph: Graph, gout: Node, inputs: list[Node], out: Node, attrs: dict
+) -> list[Node | None]:
     a, b = inputs
     bt = add_unary(graph, OpType.TRANSPOSE, b, f"matmul_bt_{out.id}")
     at = add_unary(graph, OpType.TRANSPOSE, a, f"matmul_at_{out.id}")
@@ -216,14 +216,14 @@ def _vjp_matmul(
 
 
 def _vjp_transpose(
-    graph: Graph, gout: Node, inputs: List[Node], out: Node, attrs: dict
-) -> List[Optional[Node]]:
+    graph: Graph, gout: Node, inputs: list[Node], out: Node, attrs: dict
+) -> list[Node | None]:
     return [add_unary(graph, OpType.TRANSPOSE, gout, f"tr_grad_{out.id}")]
 
 
 def _vjp_exp(
-    graph: Graph, gout: Node, inputs: List[Node], out: Node, attrs: dict
-) -> List[Optional[Node]]:
+    graph: Graph, gout: Node, inputs: list[Node], out: Node, attrs: dict
+) -> list[Node | None]:
     src = inputs[0]
     ex = add_unary(graph, OpType.EXP, src, f"exp_re_{out.id}")
     g = add_binary(graph, OpType.MUL, gout, ex, f"exp_grad_{out.id}")
@@ -231,16 +231,16 @@ def _vjp_exp(
 
 
 def _vjp_log(
-    graph: Graph, gout: Node, inputs: List[Node], out: Node, attrs: dict
-) -> List[Optional[Node]]:
+    graph: Graph, gout: Node, inputs: list[Node], out: Node, attrs: dict
+) -> list[Node | None]:
     src = inputs[0]
     g = add_binary(graph, OpType.DIV, gout, src, f"log_grad_{out.id}")
     return [g]
 
 
 def _vjp_sigmoid(
-    graph: Graph, gout: Node, inputs: List[Node], out: Node, attrs: dict
-) -> List[Optional[Node]]:
+    graph: Graph, gout: Node, inputs: list[Node], out: Node, attrs: dict
+) -> list[Node | None]:
     src = inputs[0]
     y = add_unary(graph, OpType.SIGMOID, src, f"sig_y_{out.id}")
     one = add_const_scalar(graph, 1.0, dtype=y.dtype)
@@ -251,16 +251,16 @@ def _vjp_sigmoid(
 
 
 def _vjp_relu(
-    graph: Graph, gout: Node, inputs: List[Node], out: Node, attrs: dict
-) -> List[Optional[Node]]:
+    graph: Graph, gout: Node, inputs: list[Node], out: Node, attrs: dict
+) -> list[Node | None]:
     src = inputs[0]
     g = add_binary(graph, OpType.RELU_GRAD, src, gout, f"relu_grad_{out.id}")
     return [g]
 
 
 def _vjp_reduce(
-    graph: Graph, gout: Node, inputs: List[Node], out: Node, attrs: dict
-) -> List[Optional[Node]]:
+    graph: Graph, gout: Node, inputs: list[Node], out: Node, attrs: dict
+) -> list[Node | None]:
     """VJP for SUM, MEAN, and MAX reduce ops."""
     src = inputs[0]
     op_type = out.op_type
@@ -307,31 +307,31 @@ def _vjp_reduce(
 
 def _eager_add(
     g: np.ndarray, l: np.ndarray, r: np.ndarray, o: np.ndarray
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     return _sum_to_shape(g, l.shape), _sum_to_shape(g, r.shape)
 
 
 def _eager_sub(
     g: np.ndarray, l: np.ndarray, r: np.ndarray, o: np.ndarray
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     return _sum_to_shape(g, l.shape), _sum_to_shape(-g, r.shape)
 
 
 def _eager_mul(
     g: np.ndarray, l: np.ndarray, r: np.ndarray, o: np.ndarray
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     return _sum_to_shape(g * r, l.shape), _sum_to_shape(g * l, r.shape)
 
 
 def _eager_div(
     g: np.ndarray, l: np.ndarray, r: np.ndarray, o: np.ndarray
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     return _sum_to_shape(g / r, l.shape), _sum_to_shape(-g * l / (r * r), r.shape)
 
 
 def _eager_matmul(
     g: np.ndarray, l: np.ndarray, r: np.ndarray, o: np.ndarray
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     return g @ r.T, l.T @ g
 
 
@@ -391,7 +391,7 @@ def _eager_max(
 # Unified registry  (single source of truth)
 # ====================================================================
 
-_VJP_REGISTRY: Dict[OpType, VJPRule] = {
+_VJP_REGISTRY: dict[OpType, VJPRule] = {
     # Binary
     OpType.ADD: VJPRule(eager=_eager_add, graph=_vjp_add),
     OpType.SUB: VJPRule(eager=_eager_sub, graph=_vjp_sub),
@@ -416,7 +416,7 @@ _VJP_REGISTRY: Dict[OpType, VJPRule] = {
 # ====================================================================
 
 
-def get_vjp_rule(op_type: OpType) -> Optional[VJPRule]:
+def get_vjp_rule(op_type: OpType) -> VJPRule | None:
     """Return the unified VJP rule for *op_type*, or ``None``."""
     return _VJP_REGISTRY.get(op_type)
 
@@ -430,10 +430,10 @@ def apply_vjp(
     graph: Graph,
     op_type: OpType,
     gout: Node,
-    inputs: List[Node],
+    inputs: list[Node],
     out_node: Node,
     attrs: dict,
-) -> List[Optional[Node]]:
+) -> list[Node | None]:
     """Look up and apply the graph-mode VJP rule for *op_type*.
 
     Returns a list of gradient nodes, one per input (``None`` if that

@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Dict, List
-
 from ..ir.graph import Node
 from .common import CppFor, CppLine
 
 
 class ReduceLoweringMixin:
-    def _emit_sum(self, node: Node, names: Dict[int, str]) -> List[str]:
+    def _emit_sum(self, node: Node, names: dict[int, str]) -> list[str]:
         src_node = self.graph.get_node(node.inputs[0])
         src = names[src_node.id]
         dst = names[node.id]
@@ -37,7 +35,7 @@ class ReduceLoweringMixin:
             ]
         )
 
-    def _emit_mean(self, node: Node, names: Dict[int, str]) -> List[str]:
+    def _emit_mean(self, node: Node, names: dict[int, str]) -> list[str]:
         src_node = self.graph.get_node(node.inputs[0])
         src = names[src_node.id]
         dst = names[node.id]
@@ -81,7 +79,7 @@ class ReduceLoweringMixin:
             ]
         )
 
-    def _emit_max(self, node: Node, names: Dict[int, str]) -> List[str]:
+    def _emit_max(self, node: Node, names: dict[int, str]) -> list[str]:
         src_node = self.graph.get_node(node.inputs[0])
         src = names[src_node.id]
         dst = names[node.id]

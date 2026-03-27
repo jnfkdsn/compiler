@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import List
-
 from ..abi import AbiStatus
 from ..ir.graph import Node
 from ..ir.ops import OpType
@@ -15,12 +13,12 @@ class CppEmitterMixin:
     def _render_cpp(
         self,
         *,
-        ordered: List[Node],
-        inputs: List[Node],
+        ordered: list[Node],
+        inputs: list[Node],
         output_node: Node,
-        declarations: List[str],
-        body: List[str],
-        workspace_slots: List[tuple[str, str]] = (),
+        declarations: list[str],
+        body: list[str],
+        workspace_slots: list[tuple[str, str]] = (),
     ) -> str:
         max_rank = 8
         output_numel = self._numel_expr(output_node)
@@ -42,15 +40,15 @@ class CppEmitterMixin:
             for i in range(len(inputs))
         ]
 
-        dim_declarations: List[str] = []
+        dim_declarations: list[str] = []
         for idx, node in enumerate(inputs):
             for d in range(node.rank):
                 dim_declarations.append(f"const long long in{idx}_d{d} = inputs[{idx}].shape[{d}];")
 
-        ws_declarations: List[str] = []
+        ws_declarations: list[str] = []
         if workspace_slots:
             ws_declarations.append(f"{ctype}* ws = static_cast<{ctype}*>(workspace);")
-            offset_parts: List[str] = []
+            offset_parts: list[str] = []
             for slot_name, numel_expr in workspace_slots:
                 if not offset_parts:
                     ws_declarations.append(f"{ctype}* {slot_name} = ws;")
@@ -60,7 +58,7 @@ class CppEmitterMixin:
                     )
                 offset_parts.append(numel_expr)
 
-        input_guards: List[str] = []
+        input_guards: list[str] = []
         for i, node in enumerate(inputs):
             input_guards.append(
                 f"if (inputs[{i}].data == nullptr) return {int(AbiStatus.INPUT_DATA_NULL_BASE) + i};"
@@ -69,7 +67,7 @@ class CppEmitterMixin:
                 f"if (inputs[{i}].rank != {node.rank}LL) return {int(AbiStatus.INPUT_RANK_MISMATCH_BASE) + i};"
             )
 
-        output_guards: List[str] = [
+        output_guards: list[str] = [
             f"if (out_desc == nullptr) return {int(AbiStatus.OUT_DESC_NULL)};",
             f"if (out_desc->data == nullptr) return {int(AbiStatus.OUT_DATA_NULL)};",
             f"if (out_desc->rank != {output_node.rank}LL) return {int(AbiStatus.OUT_RANK_MISMATCH)};",

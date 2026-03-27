@@ -15,12 +15,12 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import numpy as np
 
 from tensor_cpu.abi import decode_abi_status
-from tensor_cpu.backend.codegen import CppCodegen, GeneratedKernel
+from tensor_cpu.backend.codegen import CppCodegen
 from tensor_cpu.ir.graph import Graph, Node
 
 CPP_BINDINGS_HEADER = """
@@ -60,31 +60,31 @@ public:
 class Tensor {
 public:
     Tensor() : data_(nullptr), numel_(0), dtype_(DataType::Float32) {}
-    
+
     Tensor(py::array_t<float> arr) {
         init_from_array(arr);
     }
-    
+
     Tensor(py::array_t<double> arr) {
         init_from_array(arr);
         dtype_ = DataType::Float64;
     }
-    
+
     void* data() { return data_; }
     const void* data() const { return data_; }
     int64_t numel() const { return numel_; }
     int64_t rank() const { return static_cast<int64_t>(shape_.size()); }
     const std::vector<int64_t>& shape() const { return shape_; }
     const std::vector<int64_t>& strides() const { return strides_; }
-    
+
     py::array_t<float> as_float32() const {
         return py::array_t<float>(shape_, strides_, static_cast<float*>(data_), py::cast(this));
     }
-    
+
     py::array_t<double> as_float64() const {
         return py::array_t<double>(shape_, strides_, static_cast<double*>(data_), py::cast(this));
     }
-    
+
     TensorDesc to_desc() const {
         TensorDesc desc;
         desc.data = data_;
@@ -96,12 +96,12 @@ public:
         }
         return desc;
     }
-    
+
     bool is_float64() const { return dtype_ == DataType::Float64; }
-    
+
 private:
     enum class DataType { Float32, Float64 };
-    
+
     void init_from_array(py::buffer_info& info) {
         shape_.assign(info.shape.begin(), info.shape.end());
         strides_.assign(info.strides.begin(), info.strides.end());
@@ -112,13 +112,13 @@ private:
         numel_ = 1;
         for (auto d : shape_) numel_ *= d;
     }
-    
+
     template<typename T>
     void init_from_array(py::array_t<T> arr) {
         py::buffer_info info = arr.request();
         init_from_array(info);
     }
-    
+
     void* data_;
     int64_t numel_;
     std::vector<int64_t> shape_;
@@ -132,15 +132,15 @@ public:
         : lib_path_(lib_path), entry_name_(entry_name) {
         load_kernel();
     }
-    
+
     py::array run(py::list inputs, py::dict kwargs);
-    
+
     const std::vector<int64_t>& input_ranks() const { return input_ranks_; }
     const std::vector<int64_t>& output_sym_shape() const { return output_sym_shape_; }
-    
+
 private:
     void load_kernel();
-    
+
     std::string lib_path_;
     std::string entry_name_;
     void* lib_handle_ = nullptr;
@@ -167,7 +167,7 @@ void CompiledKernel::load_kernel() {
     if (!lib_handle_) {
         throw KernelError("Failed to load kernel library: " + std::string(dlerror()), -1);
     }
-    
+
     kernel_fn_ = reinterpret_cast<int(*)(TensorDesc*, int64_t, TensorDesc*, void*)>(
         dlsym(lib_handle_, entry_name_.c_str()));
     if (!kernel_fn_) {
@@ -178,14 +178,14 @@ void CompiledKernel::load_kernel() {
 py::array CompiledKernel::run(py::list inputs, py::dict kwargs) {
     if (inputs.size() != input_ranks_.size()) {
         std::ostringstream oss;
-        oss << "Input count mismatch: expected " << input_ranks_.size() 
+        oss << "Input count mismatch: expected " << input_ranks_.size()
             << ", got " << inputs.size();
         throw std::invalid_argument(oss.str());
     }
-    
+
     std::vector<Tensor> input_tensors;
     std::vector<TensorDesc> input_descs;
-    
+
     for (auto item : inputs) {
         if (py::isinstance<py::array_t<float>>(item)) {
             input_tensors.emplace_back(py::cast<py::array_t<float>>(item));
@@ -196,17 +196,17 @@ py::array CompiledKernel::run(py::list inputs, py::dict kwargs) {
         }
         input_descs.push_back(input_tensors.back().to_desc());
     }
-    
+
     // Compute output shape
     std::vector<int64_t> out_shape;
     for (auto dim : output_sym_shape_) {
         out_shape.push_back(dim);
     }
-    
+
     py::array_t<float> output(out_shape);
     Tensor out_tensor(output);
     TensorDesc out_desc = out_tensor.to_desc();
-    
+
     // Allocate workspace
     std::vector<float> workspace;
     void* ws_ptr = nullptr;
@@ -220,18 +220,18 @@ py::array CompiledKernel::run(py::list inputs, py::dict kwargs) {
         workspace.resize(ws_size);
         ws_ptr = workspace.data();
     }
-    
+
     int status = kernel_fn_(
         input_descs.data(),
         static_cast<int64_t>(inputs.size()),
         &out_desc,
         ws_ptr
     );
-    
+
     if (status != 0) {
         throw KernelError("Kernel execution failed with status " + std::to_string(status), status);
     }
-    
+
     return output;
 }
 
@@ -248,25 +248,25 @@ void register_exception_translations(py::module& m) {
 
 PYBIND11_MODULE(tensor_cpu_native, m) {
     m.doc() = "Tensor CPU native bindings";
-    
+
     py::class_<Tensor>(m, "Tensor")
         .def(py::init<py::array_t<float>>())
         .def(py::init<py::array_t<double>>())
-        .def_property_readonly("data", [](Tensor& t) { 
-            return reinterpret_cast<uintptr_t>(t.data()); 
+        .def_property_readonly("data", [](Tensor& t) {
+            return reinterpret_cast<uintptr_t>(t.data());
         })
         .def_property_readonly("numel", &Tensor::numel)
         .def_property_readonly("shape", &Tensor::shape)
         .def_property_readonly("strides", &Tensor::strides)
         .def("as_float32", &Tensor::as_float32)
         .def("as_float64", &Tensor::as_float64);
-    
+
     py::class_<CompiledKernel>(m, "CompiledKernel")
         .def(py::init<std::string, std::string>())
         .def("run", &CompiledKernel::run)
         .def_property_readonly("input_ranks", &CompiledKernel::input_ranks)
         .def_property_readonly("output_sym_shape", &CompiledKernel::output_sym_shape);
-    
+
     register_exception_translations(m);
 }
 
@@ -322,7 +322,7 @@ class Pybind11Runtime:
                 return candidate
         raise RuntimeError("No C++ compiler found")
 
-    def _build_compile_command(self, compiler: str, source: Path, out_dir: Path) -> List[str]:
+    def _build_compile_command(self, compiler: str, source: Path, out_dir: Path) -> list[str]:
         import sysconfig
 
         python_include = sysconfig.get_path("include")
@@ -346,8 +346,8 @@ class Pybind11Runtime:
             import pybind11
 
             return pybind11.get_include()
-        except ImportError:
-            raise RuntimeError("pybind11 not installed. Run: pip install pybind11")
+        except ImportError as err:
+            raise RuntimeError("pybind11 not installed. Run: pip install pybind11") from err
 
 
 class DLPackTensor:
@@ -357,13 +357,13 @@ class DLPackTensor:
         self._array = array
         self._capsule = None
 
-    def __dlpack__(self, stream: Optional[int] = None) -> Any:
+    def __dlpack__(self, stream: int | None = None) -> Any:
         """Return a DLPack capsule for zero-copy sharing."""
         if self._capsule is None:
             self._capsule = self._create_dlpack_capsule()
         return self._capsule
 
-    def __dlpack_device__(self) -> Tuple[int, int]:
+    def __dlpack_device__(self) -> tuple[int, int]:
         """Return (device_type, device_id) tuple."""
         return (1, 0)  # kDLCPU, device_id=0
 
@@ -495,11 +495,11 @@ class PybindJITModule:
     def __init__(
         self,
         lib_path: Path,
-        input_nodes: List[Node],
+        input_nodes: list[Node],
         output_node: Node,
-        output_sym_shape: Tuple[str, ...] = (),
-        input_ranks: Tuple[int, ...] = (),
-        workspace_slots: Tuple[Tuple[str, Tuple[str, ...]], ...] = (),
+        output_sym_shape: tuple[str, ...] = (),
+        input_ranks: tuple[int, ...] = (),
+        workspace_slots: tuple[tuple[str, tuple[str, ...]], ...] = (),
     ) -> None:
         self._lib_path = lib_path
         self.input_ranks = input_ranks
@@ -539,7 +539,7 @@ class PybindJITModule:
         else:
             return self._run_with_ctypes_fallback(in_arrays)
 
-    def _run_with_pybind(self, in_arrays: List[np.ndarray]) -> np.ndarray:
+    def _run_with_pybind(self, in_arrays: list[np.ndarray]) -> np.ndarray:
         """Run using pybind11 bindings."""
         import pybind11
 
@@ -549,11 +549,11 @@ class PybindJITModule:
         result = self._kernel.run(input_list, {})
         return np.asarray(result)
 
-    def _run_with_ctypes_fallback(self, in_arrays: List[np.ndarray]) -> np.ndarray:
+    def _run_with_ctypes_fallback(self, in_arrays: list[np.ndarray]) -> np.ndarray:
         """Fallback to ctypes if pybind11 is not available."""
         import ctypes
 
-        from .runtime import TensorDesc, _desc_from_array, _numel
+        from .runtime import TensorDesc, _desc_from_array
 
         actual_input_shapes = [tuple(arr.shape) for arr in in_arrays]
         out_shape = self._compute_output_shape(actual_input_shapes)
@@ -587,7 +587,7 @@ class PybindJITModule:
 
         return out
 
-    def _compute_output_shape(self, input_shapes: List[Tuple[int, ...]]) -> Tuple[int, ...]:
+    def _compute_output_shape(self, input_shapes: list[tuple[int, ...]]) -> tuple[int, ...]:
         """Compute output shape from symbolic expressions."""
         if not self.output_sym_shape:
             return ()
@@ -597,7 +597,7 @@ class PybindJITModule:
             result.append(self._eval_sym_dim(expr, input_shapes))
         return tuple(result)
 
-    def _eval_sym_dim(self, expr: str, input_shapes: List[Tuple[int, ...]]) -> int:
+    def _eval_sym_dim(self, expr: str, input_shapes: list[tuple[int, ...]]) -> int:
         """Evaluate a symbolic dimension expression."""
         import re
 
@@ -606,10 +606,10 @@ class PybindJITModule:
             return input_shapes[int(m.group(1))][int(m.group(2))]
         try:
             return int(expr)
-        except ValueError:
-            raise ValueError(f"Cannot evaluate symbolic dim: {expr}")
+        except ValueError as err:
+            raise ValueError(f"Cannot evaluate symbolic dim: {expr}") from err
 
-    def _eval_workspace_size(self, input_shapes: List[Tuple[int, ...]]) -> int:
+    def _eval_workspace_size(self, input_shapes: list[tuple[int, ...]]) -> int:
         """Compute total workspace size in elements."""
         total = 0
         for _, sym_dims in self.workspace_slots:
@@ -627,7 +627,7 @@ class PybindJITEngine:
         self,
         use_hpc_template: bool = False,
         enable_memory_planner: bool = True,
-        passes: Optional[List[str]] = None,
+        passes: list[str] | None = None,
     ) -> None:
         self.use_hpc_template = use_hpc_template
         self.enable_memory_planner = enable_memory_planner
@@ -635,7 +635,6 @@ class PybindJITEngine:
 
     def compile_graph(self, graph: Graph) -> PybindJITModule:
         """Compile a Graph IR into a native module."""
-        import os
 
         passes_to_run = self.passes
         if passes_to_run is None:
@@ -689,7 +688,7 @@ class PybindJITEngine:
 
     def _build_command(
         self, compiler: str, cpp_path: Path, lib_path: Path, openmp: bool = True
-    ) -> List[str]:
+    ) -> list[str]:
         if compiler == "cl":
             cmd = ["cl", "/std:c++17", "/O2", "/EHsc", "/LD", str(cpp_path)]
             if openmp:
@@ -725,7 +724,7 @@ class PybindJITEngine:
             raise ValueError("Graph is empty.")
         return ordered[-1]
 
-    def _resolve_input_nodes(self, graph: Graph) -> List[Node]:
+    def _resolve_input_nodes(self, graph: Graph) -> list[Node]:
         from tensor_cpu.ir.ops import OpType
 
         nodes = []

@@ -6,8 +6,6 @@ and produces formatted C++ source code.
 
 from __future__ import annotations
 
-from typing import List
-
 from .cpp_ast import (
     Assign,
     ASTVisitor,
@@ -42,7 +40,7 @@ class CodegenVisitor(ASTVisitor):
     def __init__(self, indent_size: int = 4) -> None:
         self._indent_size = indent_size
         self._indent_level = 0
-        self._lines: List[str] = []
+        self._lines: list[str] = []
 
     def _indent(self) -> str:
         return " " * (self._indent_level * self._indent_size)

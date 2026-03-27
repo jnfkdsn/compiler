@@ -18,14 +18,14 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 
 class TIRNode(ABC):
     """Base class for all TIR nodes."""
 
     @abstractmethod
-    def accept(self, visitor: "TIRVisitor") -> Any:
+    def accept(self, visitor: TIRVisitor) -> Any:
         pass
 
 
@@ -58,7 +58,7 @@ class Var(TIRExpr):
     name: str
     dtype: str = "float32"
 
-    def accept(self, visitor: "TIRVisitor") -> Any:
+    def accept(self, visitor: TIRVisitor) -> Any:
         return visitor.visit_var(self)
 
 
@@ -66,10 +66,10 @@ class Var(TIRExpr):
 class Const(TIRExpr):
     """A constant value."""
 
-    value: Union[int, float, str]
+    value: int | float | str
     dtype: str = "int32"
 
-    def accept(self, visitor: "TIRVisitor") -> Any:
+    def accept(self, visitor: TIRVisitor) -> Any:
         return visitor.visit_const(self)
 
 
@@ -81,7 +81,7 @@ class Binary(TIRExpr):
     op: str
     rhs: TIRExpr
 
-    def accept(self, visitor: "TIRVisitor") -> Any:
+    def accept(self, visitor: TIRVisitor) -> Any:
         return visitor.visit_binary(self)
 
 
@@ -92,7 +92,7 @@ class Unary(TIRExpr):
     op: str
     operand: TIRExpr
 
-    def accept(self, visitor: "TIRVisitor") -> Any:
+    def accept(self, visitor: TIRVisitor) -> Any:
         return visitor.visit_unary(self)
 
 
@@ -104,7 +104,7 @@ class Ternary(TIRExpr):
     true_expr: TIRExpr
     false_expr: TIRExpr
 
-    def accept(self, visitor: "TIRVisitor") -> Any:
+    def accept(self, visitor: TIRVisitor) -> Any:
         return visitor.visit_ternary(self)
 
 
@@ -113,9 +113,9 @@ class CallExpr(TIRExpr):
     """Function call expression."""
 
     func: str
-    args: List[TIRExpr] = field(default_factory=list)
+    args: list[TIRExpr] = field(default_factory=list)
 
-    def accept(self, visitor: "TIRVisitor") -> Any:
+    def accept(self, visitor: TIRVisitor) -> Any:
         return visitor.visit_call_expr(self)
 
 
@@ -124,9 +124,9 @@ class BufferLoad(TIRExpr):
     """Load a value from a buffer: buffer[indices...]."""
 
     buffer: Var
-    indices: List[TIRExpr] = field(default_factory=list)
+    indices: list[TIRExpr] = field(default_factory=list)
 
-    def accept(self, visitor: "TIRVisitor") -> Any:
+    def accept(self, visitor: TIRVisitor) -> Any:
         return visitor.visit_buffer_load(self)
 
 
@@ -136,9 +136,9 @@ class BufferStore(TIRStmt):
 
     buffer: Var
     value: TIRExpr
-    indices: List[TIRExpr] = field(default_factory=list)
+    indices: list[TIRExpr] = field(default_factory=list)
 
-    def accept(self, visitor: "TIRVisitor") -> Any:
+    def accept(self, visitor: TIRVisitor) -> Any:
         return visitor.visit_buffer_store(self)
 
 
@@ -152,7 +152,7 @@ class For(TIRStmt):
     body: TIRStmt
     annotation: LoopAnnotation = LoopAnnotation.NONE
 
-    def accept(self, visitor: "TIRVisitor") -> Any:
+    def accept(self, visitor: TIRVisitor) -> Any:
         return visitor.visit_for(self)
 
 
@@ -160,9 +160,9 @@ class For(TIRStmt):
 class Block(TIRStmt):
     """A block of statements."""
 
-    stmts: List[TIRStmt] = field(default_factory=list)
+    stmts: list[TIRStmt] = field(default_factory=list)
 
-    def accept(self, visitor: "TIRVisitor") -> Any:
+    def accept(self, visitor: TIRVisitor) -> Any:
         return visitor.visit_block(self)
 
 
@@ -172,9 +172,9 @@ class IfStmt(TIRStmt):
 
     cond: TIRExpr
     then_body: TIRStmt
-    else_body: Optional[TIRStmt] = None
+    else_body: TIRStmt | None = None
 
-    def accept(self, visitor: "TIRVisitor") -> Any:
+    def accept(self, visitor: TIRVisitor) -> Any:
         return visitor.visit_if_stmt(self)
 
 
@@ -183,11 +183,11 @@ class Allocate(TIRStmt):
     """Allocate a buffer."""
 
     buffer: Var
-    shape: List[TIRExpr]
+    shape: list[TIRExpr]
     dtype: str = "float32"
-    body: Optional[TIRStmt] = None
+    body: TIRStmt | None = None
 
-    def accept(self, visitor: "TIRVisitor") -> Any:
+    def accept(self, visitor: TIRVisitor) -> Any:
         return visitor.visit_allocate(self)
 
 
@@ -199,7 +199,7 @@ class LetStmt(TIRStmt):
     value: TIRExpr
     body: TIRStmt
 
-    def accept(self, visitor: "TIRVisitor") -> Any:
+    def accept(self, visitor: TIRVisitor) -> Any:
         return visitor.visit_let_stmt(self)
 
 
@@ -209,9 +209,9 @@ class AssertStmt(TIRStmt):
 
     cond: TIRExpr
     message: str
-    body: Optional[TIRStmt] = None
+    body: TIRStmt | None = None
 
-    def accept(self, visitor: "TIRVisitor") -> Any:
+    def accept(self, visitor: TIRVisitor) -> Any:
         return visitor.visit_assert_stmt(self)
 
 
@@ -221,9 +221,9 @@ class ProducerStore(TIRStmt):
 
     producer: Var
     value: TIRExpr
-    indices: List[TIRExpr] = field(default_factory=list)
+    indices: list[TIRExpr] = field(default_factory=list)
 
-    def accept(self, visitor: "TIRVisitor") -> Any:
+    def accept(self, visitor: TIRVisitor) -> Any:
         return visitor.visit_producer_store(self)
 
 
@@ -236,7 +236,7 @@ class AttrStmt(TIRStmt):
     value: TIRExpr
     body: TIRStmt
 
-    def accept(self, visitor: "TIRVisitor") -> Any:
+    def accept(self, visitor: TIRVisitor) -> Any:
         return visitor.visit_attr_stmt(self)
 
 
@@ -245,10 +245,10 @@ class Buffer:
     """Represents a tensor buffer with shape and strides."""
 
     name: str
-    shape: List[TIRExpr]
+    shape: list[TIRExpr]
     dtype: str = "float32"
-    strides: Optional[List[TIRExpr]] = None
-    data: Optional[Var] = None
+    strides: list[TIRExpr] | None = None
+    data: Var | None = None
     scope: str = "global"
 
     def __post_init__(self):
@@ -261,12 +261,12 @@ class PrimFunc(TIRNode):
     """A primitive function in TIR."""
 
     name: str
-    params: List[Var]
+    params: list[Var]
     body: TIRStmt
-    buffers: Dict[str, Buffer] = field(default_factory=dict)
-    attrs: Dict[str, Any] = field(default_factory=dict)
+    buffers: dict[str, Buffer] = field(default_factory=dict)
+    attrs: dict[str, Any] = field(default_factory=dict)
 
-    def accept(self, visitor: "TIRVisitor") -> Any:
+    def accept(self, visitor: TIRVisitor) -> Any:
         return visitor.visit_prim_func(self)
 
 
@@ -274,9 +274,9 @@ class PrimFunc(TIRNode):
 class IRModule(TIRNode):
     """A module containing multiple PrimFuncs."""
 
-    functions: Dict[str, PrimFunc] = field(default_factory=dict)
+    functions: dict[str, PrimFunc] = field(default_factory=dict)
 
-    def accept(self, visitor: "TIRVisitor") -> Any:
+    def accept(self, visitor: TIRVisitor) -> Any:
         return visitor.visit_ir_module(self)
 
 

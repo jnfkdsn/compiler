@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Tuple
-
 from .ops import OpType
 
-Shape = Tuple[int, ...]
+Shape = tuple[int, ...]
 AxisLike = int | tuple[int, ...] | None
 SUPPORTED_DTYPES = frozenset({"float32", "float64"})
 

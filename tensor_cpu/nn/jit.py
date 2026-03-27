@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Callable, Dict, List, Sequence
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -17,7 +18,7 @@ from ..tensor import Tensor
 from .modules import Module
 
 if TYPE_CHECKING:
-    from experimental.lazy import LazyTensor
+    pass
 
 
 @dataclass
@@ -38,8 +39,8 @@ class _TensorSlot:
             setattr(self.owner, self.key, value)  # type: ignore[arg-type]
 
 
-def _collect_parameter_slots(module: Module) -> List[_TensorSlot]:
-    slots: List[_TensorSlot] = []
+def _collect_parameter_slots(module: Module) -> list[_TensorSlot]:
+    slots: list[_TensorSlot] = []
 
     def walk(obj: object) -> None:
         if isinstance(obj, Module):
@@ -97,14 +98,14 @@ class JITTrainer:
         self.use_hpc_template = bool(use_hpc_template)
 
         self._compiled = None
-        self._param_slots: List[_TensorSlot] = []
-        self._param_input_ids: List[int] = []
+        self._param_slots: list[_TensorSlot] = []
+        self._param_input_ids: list[int] = []
         self._x_shape: tuple[int, ...] | None = None
         self._y_shape: tuple[int, ...] | None = None
         self._sgd_kernels = []
         self._adam_kernels = []
-        self._adam_m: List[np.ndarray] = []
-        self._adam_v: List[np.ndarray] = []
+        self._adam_m: list[np.ndarray] = []
+        self._adam_v: list[np.ndarray] = []
         self._adam_step = 0
 
     def _compile(self, x: np.ndarray, y: np.ndarray) -> None:
@@ -115,7 +116,7 @@ class JITTrainer:
         self._param_slots = slots
 
         originals = [slot.get() for slot in slots]
-        traced_params: List[Tensor] = []
+        traced_params: list[Tensor] = []
 
         with TraceContext() as tc:
             tx = Tensor.from_numpy(x, name="input_x")
@@ -223,7 +224,7 @@ class JITTrainer:
 @dataclass
 class _CompiledCacheEntry:
     compiled: object
-    param_input_ids: List[int]
+    param_input_ids: list[int]
     x_shape: tuple[int, ...]
     y_shape: tuple[int, ...]
 
@@ -259,8 +260,8 @@ class LazyJITTrainer:
         self.eps = float(eps)
         self.use_hpc_template = bool(use_hpc_template)
 
-        self._param_slots: List[_TensorSlot] = _collect_parameter_slots(model)
-        self._compile_cache: Dict[tuple[int, int], _CompiledCacheEntry] = {}
+        self._param_slots: list[_TensorSlot] = _collect_parameter_slots(model)
+        self._compile_cache: dict[tuple[int, int], _CompiledCacheEntry] = {}
 
         if self.optimizer == "sgd":
             self._sgd_kernels = [
@@ -301,7 +302,7 @@ class LazyJITTrainer:
         y_shape = tuple(y.shape)
 
         originals = [slot.get() for slot in self._param_slots]
-        traced_params: List[Tensor] = []
+        traced_params: list[Tensor] = []
 
         with TraceContext() as tc:
             tx = Tensor.from_numpy(x, name="input_x")
