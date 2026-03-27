@@ -20,6 +20,9 @@ try:
     from sympy import (
         And,
         Eq,
+    )
+    from sympy import Expr as SymExpr
+    from sympy import (
         Ge,
         Gt,
         Integer,
@@ -29,7 +32,10 @@ try:
         Not,
         Or,
         Rational,
-        Symbol,
+    )
+    from sympy import Symbol
+    from sympy import Symbol as SymSymbol
+    from sympy import (
         expand,
         factor,
         simplify,
@@ -37,8 +43,6 @@ try:
         symbols,
         sympify,
     )
-    from sympy import Expr as SymExpr
-    from sympy import Symbol as SymSymbol
     from sympy.core.numbers import NegativeOne, One, Zero
 
     HAS_SYMPY = True
