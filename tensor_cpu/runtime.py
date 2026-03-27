@@ -89,8 +89,10 @@ class JITModule:
         input_ranks: tuple[int, ...] = (),
         workspace_slots: tuple[tuple[str, tuple[str, ...]], ...] = (),
         exact_input_shapes: tuple[tuple[int, ...], ...] = (),
+        tmp_dir: Path | None = None,
     ) -> None:
         self._lib_path = lib_path
+        self._tmp_dir = tmp_dir
         self.input_shapes = [node.shape for node in input_nodes]
         self.input_ranks = input_ranks or tuple(node.rank for node in input_nodes)
         self.exact_input_shapes = exact_input_shapes
@@ -112,6 +114,22 @@ class JITModule:
             ctypes.c_void_p,  # workspace
         ]
         self._fn.restype = ctypes.c_int
+
+    def __del__(self) -> None:
+        """Clean up the temporary compilation directory."""
+        try:
+            # Release the shared library handle before removing files.
+            if hasattr(self, "_lib") and self._lib is not None:
+                if hasattr(self._lib, "_handle") and _is_posix():
+                    try:
+                        ctypes.cdll.LoadLibrary("").close()  # no-op, just to avoid errors
+                    except Exception:
+                        pass
+                self._lib = None
+            if hasattr(self, "_tmp_dir") and self._tmp_dir is not None and self._tmp_dir.exists():
+                shutil.rmtree(self._tmp_dir, ignore_errors=True)
+        except Exception:
+            pass
 
     def _eval_sym_dim(self, expr: str, input_shapes: list[tuple[int, ...]]) -> int:#将符号维度表达式解析为整数：若匹配 _SYM_DIM_RE，从 input_shapes 中取对应维度；否则尝试 int(expr)
         """Evaluate a symbolic dimension expression given actual input shapes."""
@@ -250,9 +268,6 @@ class JITEngine:
                 f"Compile failed with {compiler}\ncmd: {' '.join(cmd)}\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
             )
 
-        if compiler == "cl":
-            os.environ["PATH"] = str(tmp_path) + os.pathsep + os.environ.get("PATH", "")
-
         output_node = _resolve_output_node(graph)
         input_nodes = _resolve_input_nodes(graph)
         return JITModule(
@@ -263,6 +278,7 @@ class JITEngine:
             input_ranks=kernel.input_ranks,
             workspace_slots=kernel.workspace_slots,
             exact_input_shapes=kernel.exact_input_shapes,
+            tmp_dir=tmp_path,
         )#编译成功后，返回一个JITModule实例，包含了编译好的库路径、输入输出节点信息等
 
 
@@ -276,6 +292,10 @@ def _is_windows() -> bool:
     import platform
 
     return platform.system().lower().startswith("win")
+
+
+def _is_posix() -> bool:
+    return os.name == "posix"
 
 
 def _resolve_output_shape(graph: Graph) -> tuple[int, ...]:

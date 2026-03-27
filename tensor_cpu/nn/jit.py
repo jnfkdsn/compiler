@@ -3,15 +3,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Sequence
+from typing import Callable, Dict, List, Sequence, TYPE_CHECKING
 
 import numpy as np
 
-from experimental.lazy import LazyTensor
 from ..autodiff.train_jit import compile_adam_update_kernels, compile_sgd_update_kernel, compile_training_step
 from ..frontend.tracer import TraceContext
 from ..tensor import Tensor
 from .modules import Module
+
+if TYPE_CHECKING:
+    from experimental.lazy import LazyTensor
 
 
 @dataclass
@@ -229,7 +231,7 @@ class LazyJITTrainer:
         self,
         model: Module,
         *,
-        lazy_loss_fn: Callable[[LazyTensor, LazyTensor], LazyTensor],
+        lazy_loss_fn: Callable,
         optimizer: str = "sgd",
         lr: float = 1e-2,
         weight_decay: float = 0.0,
@@ -277,6 +279,8 @@ class LazyJITTrainer:
             raise ValueError(f"Unsupported optimizer: {self.optimizer}")
 
     def _compile_for_shape(self, x: np.ndarray, y: np.ndarray) -> _CompiledCacheEntry:
+        from experimental.lazy import LazyTensor
+
         x_shape = tuple(x.shape)
         y_shape = tuple(y.shape)
 

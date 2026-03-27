@@ -27,7 +27,7 @@ class ElementwiseLoweringMixin:
         return self._emit_structured(
             [
                 CppFor(
-                    init="int i = 0",
+                    init="long long i = 0",
                     cond=f"i < {total}",
                     inc="++i",
                     body=[CppLine(f"{dst}[i] = {lhs}[{li}] {op} {rhs}[{ri}];")],
@@ -73,7 +73,7 @@ class ElementwiseLoweringMixin:
         return self._emit_structured(
             [
                 CppFor(
-                    init="int i = 0",
+                    init="long long i = 0",
                     cond=f"i < {total}",
                     inc="++i",
                     body=[
@@ -97,7 +97,7 @@ class ElementwiseLoweringMixin:
         return self._emit_structured(
             [
                 CppFor(
-                    init="int i = 0",
+                    init="long long i = 0",
                     cond=f"i < {total}",
                     inc="++i",
                     body=[CppLine(f"{dst}[i] = {src}[{si}] > {zero} ? {gout}[{gi}] : {zero};")],
@@ -114,7 +114,7 @@ class ElementwiseLoweringMixin:
         return self._emit_structured(
             [
                 CppFor(
-                    init="int i = 0",
+                    init="long long i = 0",
                     cond=f"i < {total}",
                     inc="++i",
                     body=[CppLine(f"{dst}[i] = {src}[{si}];")],
@@ -151,7 +151,7 @@ class ElementwiseLoweringMixin:
         return self._emit_structured(
             [
                 CppFor(
-                    init="int i = 0",
+                    init="long long i = 0",
                     cond=f"i < {total}",
                     inc="++i",
                     body=[CppLine(f"{dst}[i] = std::exp({src}[i]);")],
@@ -166,7 +166,7 @@ class ElementwiseLoweringMixin:
         return self._emit_structured(
             [
                 CppFor(
-                    init="int i = 0",
+                    init="long long i = 0",
                     cond=f"i < {total}",
                     inc="++i",
                     body=[CppLine(f"{dst}[i] = std::log({src}[i]);")],
@@ -183,7 +183,7 @@ class ElementwiseLoweringMixin:
         return self._emit_structured(
             [
                 CppFor(
-                    init="int i = 0",
+                    init="long long i = 0",
                     cond=f"i < {total}",
                     inc="++i",
                     body=[

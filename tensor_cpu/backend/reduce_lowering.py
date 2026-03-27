@@ -20,9 +20,9 @@ class ReduceLoweringMixin:
         zero = self._cpp_zero(node)
         return self._emit_structured(
             [
-                CppFor(init="int o = 0", cond=f"o < {out_total}", inc="++o", body=[CppLine(f"{dst}[o] = {zero};")]),
+                CppFor(init="long long o = 0", cond=f"o < {out_total}", inc="++o", body=[CppLine(f"{dst}[o] = {zero};")]),
                 CppFor(
-                    init="int i = 0",
+                    init="long long i = 0",
                     cond=f"i < {total}",
                     inc="++i",
                     body=[CppLine(f"{dst}[{dst_idx}] += {src}[i];")],
@@ -51,14 +51,14 @@ class ReduceLoweringMixin:
         div_expr = f"({ctype})({reduce_size_expr})"
         return self._emit_structured(
             [
-                CppFor(init="int o = 0", cond=f"o < {out_total}", inc="++o", body=[CppLine(f"{dst}[o] = {zero};")]),
+                CppFor(init="long long o = 0", cond=f"o < {out_total}", inc="++o", body=[CppLine(f"{dst}[o] = {zero};")]),
                 CppFor(
-                    init="int i = 0",
+                    init="long long i = 0",
                     cond=f"i < {total}",
                     inc="++i",
                     body=[CppLine(f"{dst}[{dst_idx}] += {src}[i];")],
                 ),
-                CppFor(init="int o = 0", cond=f"o < {out_total}", inc="++o", body=[CppLine(f"{dst}[o] /= {div_expr};")]),
+                CppFor(init="long long o = 0", cond=f"o < {out_total}", inc="++o", body=[CppLine(f"{dst}[o] /= {div_expr};")]),
             ]
         )
 
@@ -73,17 +73,17 @@ class ReduceLoweringMixin:
         return self._emit_structured(
             [
                 CppFor(
-                    init="int o = 0",
+                    init="long long o = 0",
                     cond=f"o < {out_total}",
                     inc="++o",
                     body=[CppLine(f"{dst}[o] = {self._cpp_neg_inf(node)};")],
                 ),
                 CppFor(
-                    init="int i = 0",
+                    init="long long i = 0",
                     cond=f"i < {total}",
                     inc="++i",
                     body=[
-                        CppLine(f"const int di = {dst_idx};"),
+                        CppLine(f"const long long di = {dst_idx};"),
                         CppLine(f"if ({src}[i] > {dst}[di]) {dst}[di] = {src}[i];"),
                     ],
                 ),
